@@ -38,7 +38,7 @@ export default function Auth() {
 
   useEffect(() => {
     if (user) {
-      navigate('/');
+      navigate('/restaurantes');
     }
   }, [user, navigate]);
 
@@ -146,11 +146,11 @@ export default function Auth() {
         <div className="container py-4">
           <Button
             variant="ghost"
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/restaurantes')}
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
           >
             <ChevronLeft className="h-4 w-4" />
-            Voltar ao cardápio
+            Voltar aos restaurantes
           </Button>
         </div>
       </header>
