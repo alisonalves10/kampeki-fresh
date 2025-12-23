@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
 import { ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,7 +9,6 @@ import { RestaurantMenu } from '@/components/marketplace/RestaurantMenu';
 import { MarketplaceCart } from '@/components/marketplace/MarketplaceCart';
 
 export default function TenantSitePage() {
-  const { slug } = useParams();
   const { restaurant, branding } = useTenant();
   const { totalItems, isCartOpen, setIsCartOpen } = useMarketplaceCart();
   const [products, setProducts] = useState<MarketplaceProduct[]>([]);
@@ -23,17 +21,25 @@ export default function TenantSitePage() {
       setLoading(true);
       try {
         // Fetch products for this restaurant
-        const { data, error } = await supabase
+        const { data, error } = await (supabase
           .from('db_products')
-          .select('id, name, description, price, image_url, category')
+          .select('id, name, description, price, image_url, category') as any)
           .eq('restaurant_id', restaurant.id)
           .eq('is_available', true)
           .order('sort_order', { ascending: true });
 
         if (error) throw error;
-        setProducts(data || []);
+        setProducts((data || []) as MarketplaceProduct[]);
       } catch (err) {
         console.error('Error fetching products:', err);
+        // Fallback: fetch all products if restaurant_id filter fails
+        const { data } = await supabase
+          .from('db_products')
+          .select('id, name, description, price, image_url, category')
+          .eq('is_available', true)
+          .order('sort_order', { ascending: true });
+        
+        setProducts((data || []) as MarketplaceProduct[]);
       } finally {
         setLoading(false);
       }

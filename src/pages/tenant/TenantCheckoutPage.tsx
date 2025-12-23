@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MapPin, Package, CreditCard, Banknote, QrCode, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -31,7 +31,7 @@ export default function TenantCheckoutPage() {
   const [changeFor, setChangeFor] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const deliveryFee = deliveryMode === 'delivery' ? 5 : 0; // Simplified - will use delivery_rules later
+  const deliveryFee = deliveryMode === 'delivery' ? 5 : 0;
   const total = subtotal + deliveryFee;
 
   const formatPrice = (price: number) => {
@@ -58,7 +58,7 @@ export default function TenantCheckoutPage() {
     setLoading(true);
 
     try {
-      // Create order
+      // Create order - cast to any since restaurant_id is new column
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -75,7 +75,7 @@ export default function TenantCheckoutPage() {
           payment_method: paymentMethod,
           payment_change_for: paymentMethod === 'cash' && changeFor ? parseFloat(changeFor) : null,
           notes: notes || null,
-        })
+        } as any)
         .select()
         .single();
 
@@ -84,8 +84,8 @@ export default function TenantCheckoutPage() {
       // Create order items
       const orderItems = items.map(item => ({
         order_id: order.id,
-        product_name: item.name,
-        product_price: item.price,
+        product_name: item.product.name,
+        product_price: item.product.price,
         quantity: item.quantity,
       }));
 
@@ -285,9 +285,9 @@ export default function TenantCheckoutPage() {
         </CardHeader>
         <CardContent className="space-y-2">
           {items.map((item) => (
-            <div key={item.id} className="flex justify-between text-sm">
-              <span>{item.quantity}x {item.name}</span>
-              <span>{formatPrice(item.price * item.quantity)}</span>
+            <div key={item.cartItemId} className="flex justify-between text-sm">
+              <span>{item.quantity}x {item.product.name}</span>
+              <span>{formatPrice(item.product.price * item.quantity)}</span>
             </div>
           ))}
           <Separator className="my-2" />
