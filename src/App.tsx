@@ -18,6 +18,7 @@ import AdminAddons from "./pages/admin/AdminAddons";
 import AdminCoupons from "./pages/admin/AdminCoupons";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminSettings from "./pages/admin/AdminSettings";
+import AdminReports from "./pages/admin/AdminReports";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +43,7 @@ const App = () => (
               <Route path="categories" element={<AdminCategories />} />
               <Route path="addons" element={<AdminAddons />} />
               <Route path="coupons" element={<AdminCoupons />} />
+              <Route path="reports" element={<AdminReports />} />
               <Route path="users" element={<AdminUsers />} />
               <Route path="settings" element={<AdminSettings />} />
             </Route>
