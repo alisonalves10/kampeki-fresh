@@ -37,8 +37,17 @@ export function LeadForm() {
     setIsSubmitting(true);
 
     try {
-      // For now, just simulate success since we'll create the leads table later
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const { error } = await supabase
+        .from('leads')
+        .insert({
+          name: formData.name,
+          restaurant_name: formData.restaurant_name,
+          whatsapp: formData.whatsapp,
+          city: formData.city,
+          orders_per_day: formData.orders_per_day || null,
+        });
+
+      if (error) throw error;
       
       setIsSubmitted(true);
       toast({
@@ -46,6 +55,7 @@ export function LeadForm() {
         description: "Entraremos em contato em breve.",
       });
     } catch (error) {
+      console.error('Error submitting lead:', error);
       toast({
         title: "Erro ao enviar",
         description: "Tente novamente mais tarde.",

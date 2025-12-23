@@ -270,6 +270,83 @@ export type Database = {
           },
         ]
       }
+      delivery_rules: {
+        Row: {
+          created_at: string
+          fee: number
+          id: string
+          is_active: boolean | null
+          km_end: number
+          km_start: number
+          restaurant_id: string
+        }
+        Insert: {
+          created_at?: string
+          fee: number
+          id?: string
+          is_active?: boolean | null
+          km_end: number
+          km_start: number
+          restaurant_id: string
+        }
+        Update: {
+          created_at?: string
+          fee?: number
+          id?: string
+          is_active?: boolean | null
+          km_end?: number
+          km_start?: number
+          restaurant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_rules_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leads: {
+        Row: {
+          city: string
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          orders_per_day: string | null
+          restaurant_name: string
+          status: string
+          updated_at: string
+          whatsapp: string
+        }
+        Insert: {
+          city: string
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          orders_per_day?: string | null
+          restaurant_name: string
+          status?: string
+          updated_at?: string
+          whatsapp: string
+        }
+        Update: {
+          city?: string
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          orders_per_day?: string | null
+          restaurant_name?: string
+          status?: string
+          updated_at?: string
+          whatsapp?: string
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           created_at: string
@@ -503,6 +580,75 @@ export type Database = {
           points?: number
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      restaurants: {
+        Row: {
+          address: string | null
+          city: string | null
+          cover_url: string | null
+          created_at: string
+          delivery_enabled: boolean | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          is_open: boolean | null
+          logo_url: string | null
+          min_order_value: number | null
+          name: string
+          opening_hours: Json | null
+          owner_id: string
+          phone: string | null
+          pickup_enabled: boolean | null
+          slug: string
+          state: string | null
+          updated_at: string
+          whatsapp: string | null
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          cover_url?: string | null
+          created_at?: string
+          delivery_enabled?: boolean | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_open?: boolean | null
+          logo_url?: string | null
+          min_order_value?: number | null
+          name: string
+          opening_hours?: Json | null
+          owner_id: string
+          phone?: string | null
+          pickup_enabled?: boolean | null
+          slug: string
+          state?: string | null
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          cover_url?: string | null
+          created_at?: string
+          delivery_enabled?: boolean | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_open?: boolean | null
+          logo_url?: string | null
+          min_order_value?: number | null
+          name?: string
+          opening_hours?: Json | null
+          owner_id?: string
+          phone?: string | null
+          pickup_enabled?: boolean | null
+          slug?: string
+          state?: string | null
+          updated_at?: string
+          whatsapp?: string | null
         }
         Relationships: []
       }
