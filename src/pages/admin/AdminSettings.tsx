@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { toast } from '@/hooks/use-toast';
-import { Loader2, MapPin, Save, Truck, Clock } from 'lucide-react';
+import { Loader2, MapPin, Save, Truck, Clock, Timer } from 'lucide-react';
 import { BusinessHours, DayHours, DEFAULT_HOURS, getDayName } from '@/hooks/useStoreStatus';
 
 interface StoreAddress {
@@ -23,6 +23,11 @@ interface DeliverySettings {
   free_above: number;
 }
 
+interface DeliveryTime {
+  min: number;
+  max: number;
+}
+
 const DAY_KEYS: (keyof BusinessHours)[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
 const AdminSettings = () => {
@@ -30,6 +35,7 @@ const AdminSettings = () => {
   const [isSavingAddress, setIsSavingAddress] = useState(false);
   const [isSavingDelivery, setIsSavingDelivery] = useState(false);
   const [isSavingHours, setIsSavingHours] = useState(false);
+  const [isSavingTime, setIsSavingTime] = useState(false);
   const [address, setAddress] = useState<StoreAddress>({
     street: '',
     number: '',
@@ -43,6 +49,7 @@ const AdminSettings = () => {
     free_above: 150
   });
   const [businessHours, setBusinessHours] = useState<BusinessHours>(DEFAULT_HOURS);
+  const [deliveryTime, setDeliveryTime] = useState<DeliveryTime>({ min: 40, max: 60 });
 
   useEffect(() => {
     fetchSettings();
@@ -51,7 +58,7 @@ const AdminSettings = () => {
   const fetchSettings = async () => {
     setIsLoading(true);
     
-    const [addressResult, deliveryResult, hoursResult] = await Promise.all([
+    const [addressResult, deliveryResult, hoursResult, timeResult] = await Promise.all([
       supabase
         .from('store_settings')
         .select('value')
@@ -66,6 +73,11 @@ const AdminSettings = () => {
         .from('store_settings')
         .select('value')
         .eq('key', 'business_hours')
+        .maybeSingle(),
+      supabase
+        .from('store_settings')
+        .select('value')
+        .eq('key', 'delivery_time')
         .maybeSingle()
     ]);
 
@@ -79,6 +91,10 @@ const AdminSettings = () => {
 
     if (!hoursResult.error && hoursResult.data) {
       setBusinessHours(hoursResult.data.value as unknown as BusinessHours);
+    }
+
+    if (!timeResult.error && timeResult.data) {
+      setDeliveryTime(timeResult.data.value as unknown as DeliveryTime);
     }
     
     setIsLoading(false);
@@ -110,6 +126,14 @@ const AdminSettings = () => {
         ...prev[day],
         [field]: value
       }
+    }));
+  };
+
+  const handleTimeChange = (field: keyof DeliveryTime, value: string) => {
+    const numValue = parseInt(value) || 0;
+    setDeliveryTime(prev => ({
+      ...prev,
+      [field]: numValue
     }));
   };
 
@@ -207,6 +231,39 @@ const AdminSettings = () => {
     }
     
     setIsSavingHours(false);
+  };
+
+  const handleSaveTime = async () => {
+    if (deliveryTime.min < 0 || deliveryTime.max < 0 || deliveryTime.min > deliveryTime.max) {
+      toast({
+        title: 'Valores inválidos',
+        description: 'O tempo mínimo deve ser menor que o máximo.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSavingTime(true);
+
+    const { error } = await supabase
+      .from('store_settings')
+      .update({ value: JSON.parse(JSON.stringify(deliveryTime)) })
+      .eq('key', 'delivery_time');
+
+    if (error) {
+      toast({
+        title: 'Erro ao salvar',
+        description: 'Não foi possível salvar o tempo de entrega. Tente novamente.',
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: 'Tempo atualizado',
+        description: 'O tempo estimado de entrega foi atualizado com sucesso.',
+      });
+    }
+    
+    setIsSavingTime(false);
   };
 
   const formatPrice = (price: number) => {
@@ -356,6 +413,67 @@ const AdminSettings = () => {
               <>
                 <Save className="h-4 w-4 mr-2" />
                 Salvar Taxa de Entrega
+              </>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Delivery Time Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Timer className="h-5 w-5" />
+            Tempo Estimado de Entrega
+          </CardTitle>
+          <CardDescription>
+            Configure o tempo estimado para entrega dos pedidos.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="time_min">Tempo Mínimo (minutos)</Label>
+              <Input
+                id="time_min"
+                type="number"
+                min="0"
+                value={deliveryTime.min}
+                onChange={(e) => handleTimeChange('min', e.target.value)}
+                placeholder="40"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="time_max">Tempo Máximo (minutos)</Label>
+              <Input
+                id="time_max"
+                type="number"
+                min="0"
+                value={deliveryTime.max}
+                onChange={(e) => handleTimeChange('max', e.target.value)}
+                placeholder="60"
+              />
+            </div>
+          </div>
+
+          <div className="p-4 bg-muted rounded-lg">
+            <p className="text-sm text-muted-foreground">Preview:</p>
+            <p className="font-medium">
+              Entrega em {deliveryTime.min}-{deliveryTime.max} min
+            </p>
+          </div>
+
+          <Button onClick={handleSaveTime} disabled={isSavingTime} className="w-full md:w-auto">
+            {isSavingTime ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Salvando...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                Salvar Tempo de Entrega
               </>
             )}
           </Button>
