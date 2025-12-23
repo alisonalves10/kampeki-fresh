@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { ImageUpload } from '@/components/ImageUpload';
 
 interface Category {
   id: string;
@@ -411,12 +412,10 @@ export default function AdminProducts() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="image_url">URL da Imagem</Label>
-                <Input
-                  id="image_url"
-                  value={formData.image_url || ''}
-                  onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                  placeholder="https://..."
+                <Label>Imagem do Produto</Label>
+                <ImageUpload
+                  value={formData.image_url || undefined}
+                  onChange={(url) => setFormData({ ...formData, image_url: url || '' })}
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
