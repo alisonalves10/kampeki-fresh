@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, MapPin, Pencil, Trash2, Star, StarOff } from 'lucide-react';
+import { Plus, MapPin, Pencil, Trash2, Star, StarOff, Loader2 } from 'lucide-react';
 
 interface Address {
   id: string;
@@ -35,6 +35,16 @@ interface AddressFormData {
   zip_code: string;
 }
 
+interface ViaCepResponse {
+  cep: string;
+  logradouro: string;
+  complemento: string;
+  bairro: string;
+  localidade: string;
+  uf: string;
+  erro?: boolean;
+}
+
 const emptyForm: AddressFormData = {
   label: 'Casa',
   street: '',
@@ -42,7 +52,7 @@ const emptyForm: AddressFormData = {
   complement: '',
   neighborhood: '',
   city: '',
-  state: 'SP',
+  state: '',
   zip_code: '',
 };
 
@@ -53,6 +63,64 @@ export const AddressManager = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
   const [formData, setFormData] = useState<AddressFormData>(emptyForm);
+  const [isLoadingCep, setIsLoadingCep] = useState(false);
+
+  const fetchAddressByCep = async (cep: string) => {
+    const cleanCep = cep.replace(/\D/g, '');
+    if (cleanCep.length !== 8) return;
+
+    setIsLoadingCep(true);
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+      const data: ViaCepResponse = await response.json();
+
+      if (data.erro) {
+        toast({
+          title: 'CEP não encontrado',
+          description: 'Verifique o CEP e tente novamente.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      setFormData((prev) => ({
+        ...prev,
+        street: data.logradouro || prev.street,
+        neighborhood: data.bairro || prev.neighborhood,
+        city: data.localidade || prev.city,
+        state: data.uf || prev.state,
+        complement: data.complemento || prev.complement,
+      }));
+
+      toast({
+        title: 'Endereço encontrado',
+        description: 'Os campos foram preenchidos automaticamente.',
+      });
+    } catch {
+      toast({
+        title: 'Erro ao buscar CEP',
+        description: 'Não foi possível consultar o CEP. Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoadingCep(false);
+    }
+  };
+
+  const handleCepChange = (value: string) => {
+    // Format CEP as 00000-000
+    const cleanValue = value.replace(/\D/g, '');
+    let formattedValue = cleanValue;
+    if (cleanValue.length > 5) {
+      formattedValue = `${cleanValue.slice(0, 5)}-${cleanValue.slice(5, 8)}`;
+    }
+    setFormData({ ...formData, zip_code: formattedValue });
+
+    // Auto-fetch when CEP is complete
+    if (cleanValue.length === 8) {
+      fetchAddressByCep(cleanValue);
+    }
+  };
 
   const { data: addresses = [], isLoading } = useQuery({
     queryKey: ['addresses', user?.id],
@@ -235,13 +303,22 @@ export const AddressManager = () => {
               </div>
               <div>
                 <Label htmlFor="zip_code">CEP</Label>
-                <Input
-                  id="zip_code"
-                  value={formData.zip_code}
-                  onChange={(e) => setFormData({ ...formData, zip_code: e.target.value })}
-                  placeholder="00000-000"
-                  required
-                />
+                <div className="relative">
+                  <Input
+                    id="zip_code"
+                    value={formData.zip_code}
+                    onChange={(e) => handleCepChange(e.target.value)}
+                    placeholder="00000-000"
+                    maxLength={9}
+                    required
+                  />
+                  {isLoadingCep && (
+                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Digite o CEP para preencher automaticamente
+                </p>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <div className="col-span-2">
