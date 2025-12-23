@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { AddressManager } from '@/components/AddressManager';
+import { PointsHistory } from '@/components/PointsHistory';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { User, Award } from 'lucide-react';
 
@@ -68,6 +69,9 @@ const Profile = () => {
               </div>
             </CardContent>
           </Card>
+
+          {/* Points History */}
+          <PointsHistory />
 
           {/* Addresses */}
           <AddressManager />
