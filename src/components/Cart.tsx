@@ -174,9 +174,10 @@ export const Cart = ({ isOpen, onClose }: CartProps) => {
               {/* Items */}
               {items.map((item) => {
                 const imageSrc = imageMap[item.product.image] || comboSalmao;
+                const itemTotalPrice = (item.product.price + (item.addonsTotalPrice || 0)) * item.quantity;
                 return (
                   <div
-                    key={item.product.id}
+                    key={item.cartItemId}
                     className="flex gap-3 p-3 bg-secondary/50 rounded-lg"
                   >
                     <img
@@ -188,15 +189,27 @@ export const Cart = ({ isOpen, onClose }: CartProps) => {
                       <h4 className="font-medium text-foreground text-sm line-clamp-2">
                         {item.product.name}
                       </h4>
+                      {/* Show selected addons */}
+                      {item.selectedAddons && item.selectedAddons.length > 0 && (
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {item.selectedAddons.map((addon, idx) => (
+                            <span key={addon.optionId}>
+                              {addon.optionName}
+                              {addon.quantity > 1 && ` (x${addon.quantity})`}
+                              {idx < item.selectedAddons!.length - 1 && ', '}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       <p className="text-primary font-semibold mt-1">
-                        {formatPrice(item.product.price * item.quantity)}
+                        {formatPrice(itemTotalPrice)}
                       </p>
                       
                       {/* Quantity Controls */}
                       <div className="flex items-center gap-2 mt-2">
                         <div className="flex items-center bg-background rounded-lg border border-border">
                           <button
-                            onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
+                            onClick={() => updateQuantity(item.cartItemId, item.quantity - 1)}
                             className="p-1.5 hover:bg-secondary rounded-l-lg transition-colors"
                           >
                             <Minus className="h-3.5 w-3.5" />
@@ -205,14 +218,14 @@ export const Cart = ({ isOpen, onClose }: CartProps) => {
                             {item.quantity}
                           </span>
                           <button
-                            onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                            onClick={() => updateQuantity(item.cartItemId, item.quantity + 1)}
                             className="p-1.5 hover:bg-secondary rounded-r-lg transition-colors"
                           >
                             <Plus className="h-3.5 w-3.5" />
                           </button>
                         </div>
                         <button
-                          onClick={() => removeItem(item.product.id)}
+                          onClick={() => removeItem(item.cartItemId)}
                           className="p-1.5 text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
                         >
                           <Trash2 className="h-4 w-4" />

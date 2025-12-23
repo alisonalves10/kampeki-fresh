@@ -1,11 +1,22 @@
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, Search, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, X, Puzzle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+
+interface Category {
+  id: string;
+  name: string;
+  icon: string;
+}
+
+interface AddonGroup {
+  id: string;
+  name: string;
+}
 
 interface Product {
   id: string;
@@ -14,64 +25,72 @@ interface Product {
   price: number;
   image_url: string | null;
   category: string;
+  category_id: string | null;
   badge: string | null;
   contains_shrimp: boolean;
   servings: number | null;
   is_available: boolean;
 }
 
-const categories = [
-  { id: 'combinados', name: 'Combinados' },
-  { id: 'sashimis', name: 'Sashimis' },
-  { id: 'temakis', name: 'Temakis' },
-  { id: 'uramakis', name: 'Uramakis' },
-  { id: 'hossomakis', name: 'Hossomakis' },
-  { id: 'niguiris', name: 'Niguiris' },
-  { id: 'gunkans', name: 'Gunkans' },
-  { id: 'bebidas', name: 'Bebidas' },
-];
+interface ProductAddonGroup {
+  addon_group_id: string;
+}
 
-const emptyProduct: Omit<Product, 'id'> = {
+const emptyProduct = {
   name: '',
   description: '',
   price: 0,
   image_url: '',
   category: 'combinados',
+  category_id: null as string | null,
   badge: '',
   contains_shrimp: false,
-  servings: null,
+  servings: null as number | null,
   is_available: true,
 };
 
 export default function AdminProducts() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [addonGroups, setAddonGroups] = useState<AddonGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [formData, setFormData] = useState<Omit<Product, 'id'>>(emptyProduct);
+  const [formData, setFormData] = useState(emptyProduct);
+  const [selectedAddonGroups, setSelectedAddonGroups] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchProducts();
+    fetchData();
   }, []);
 
-  const fetchProducts = async () => {
-    const { data, error } = await supabase
-      .from('db_products')
-      .select('*')
-      .order('category')
-      .order('sort_order');
+  const fetchData = async () => {
+    const [productsRes, categoriesRes, addonGroupsRes] = await Promise.all([
+      supabase.from('db_products').select('*').order('category').order('sort_order'),
+      supabase.from('categories').select('id, name, icon').order('sort_order'),
+      supabase.from('addon_groups').select('id, name').eq('is_active', true).order('sort_order'),
+    ]);
 
-    if (!error && data) {
-      setProducts(data as Product[]);
-    }
+    if (productsRes.data) setProducts(productsRes.data as Product[]);
+    if (categoriesRes.data) setCategories(categoriesRes.data);
+    if (addonGroupsRes.data) setAddonGroups(addonGroupsRes.data);
+    
     setLoading(false);
   };
 
-  const openModal = (product?: Product) => {
+  const fetchProductAddonGroups = async (productId: string) => {
+    const { data } = await supabase
+      .from('product_addon_groups')
+      .select('addon_group_id')
+      .eq('product_id', productId);
+    
+    return (data || []).map(d => d.addon_group_id);
+  };
+
+  const openModal = async (product?: Product) => {
     if (product) {
       setEditingProduct(product);
       setFormData({
@@ -80,14 +99,18 @@ export default function AdminProducts() {
         price: product.price,
         image_url: product.image_url || '',
         category: product.category,
+        category_id: product.category_id,
         badge: product.badge || '',
         contains_shrimp: product.contains_shrimp,
         servings: product.servings,
         is_available: product.is_available,
       });
+      const linkedGroups = await fetchProductAddonGroups(product.id);
+      setSelectedAddonGroups(linkedGroups);
     } else {
       setEditingProduct(null);
       setFormData(emptyProduct);
+      setSelectedAddonGroups([]);
     }
     setIsModalOpen(true);
   };
@@ -96,6 +119,7 @@ export default function AdminProducts() {
     setIsModalOpen(false);
     setEditingProduct(null);
     setFormData(emptyProduct);
+    setSelectedAddonGroups([]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -103,45 +127,64 @@ export default function AdminProducts() {
     setSaving(true);
 
     try {
+      // Find category by ID to get its text value for legacy support
+      const selectedCategory = categories.find(c => c.id === formData.category_id);
+      const categoryText = selectedCategory?.name?.toLowerCase().replace(/\s+/g, '-') || formData.category;
+
+      const productData = {
+        name: formData.name,
+        description: formData.description || null,
+        price: formData.price,
+        image_url: formData.image_url || null,
+        category: categoryText,
+        category_id: formData.category_id,
+        badge: formData.badge || null,
+        contains_shrimp: formData.contains_shrimp,
+        servings: formData.servings,
+        is_available: formData.is_available,
+      };
+
+      let productId: string;
+
       if (editingProduct) {
         const { error } = await supabase
           .from('db_products')
-          .update({
-            name: formData.name,
-            description: formData.description || null,
-            price: formData.price,
-            image_url: formData.image_url || null,
-            category: formData.category,
-            badge: formData.badge || null,
-            contains_shrimp: formData.contains_shrimp,
-            servings: formData.servings,
-            is_available: formData.is_available,
-          })
+          .update(productData)
           .eq('id', editingProduct.id);
 
         if (error) throw error;
+        productId = editingProduct.id;
+
+        // Update addon groups: delete all and re-insert
+        await supabase
+          .from('product_addon_groups')
+          .delete()
+          .eq('product_id', productId);
+
         toast({ title: 'Produto atualizado com sucesso!' });
       } else {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('db_products')
-          .insert({
-            name: formData.name,
-            description: formData.description || null,
-            price: formData.price,
-            image_url: formData.image_url || null,
-            category: formData.category,
-            badge: formData.badge || null,
-            contains_shrimp: formData.contains_shrimp,
-            servings: formData.servings,
-            is_available: formData.is_available,
-          });
+          .insert(productData)
+          .select('id')
+          .single();
 
         if (error) throw error;
+        productId = data.id;
         toast({ title: 'Produto criado com sucesso!' });
       }
 
+      // Insert addon group links
+      if (selectedAddonGroups.length > 0) {
+        const links = selectedAddonGroups.map(groupId => ({
+          product_id: productId,
+          addon_group_id: groupId,
+        }));
+        await supabase.from('product_addon_groups').insert(links);
+      }
+
       closeModal();
-      fetchProducts();
+      fetchData();
     } catch (error: any) {
       toast({
         title: 'Erro',
@@ -166,7 +209,7 @@ export default function AdminProducts() {
       });
     } else {
       toast({ title: 'Produto excluído com sucesso!' });
-      fetchProducts();
+      fetchData();
     }
   };
 
@@ -177,8 +220,22 @@ export default function AdminProducts() {
     }).format(price);
   };
 
+  const toggleAddonGroup = (groupId: string) => {
+    setSelectedAddonGroups(prev => 
+      prev.includes(groupId) 
+        ? prev.filter(id => id !== groupId)
+        : [...prev, groupId]
+    );
+  };
+
   const filteredProducts = products.filter((product) => {
-    if (categoryFilter !== 'all' && product.category !== categoryFilter) return false;
+    if (categoryFilter !== 'all') {
+      if (categoryFilter === product.category_id || product.category === categoryFilter) {
+        // matches
+      } else {
+        return false;
+      }
+    }
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       return product.name.toLowerCase().includes(query);
@@ -227,7 +284,7 @@ export default function AdminProducts() {
           <option value="all">Todas as categorias</option>
           {categories.map((cat) => (
             <option key={cat.id} value={cat.id}>
-              {cat.name}
+              {cat.icon} {cat.name}
             </option>
           ))}
         </select>
@@ -339,14 +396,15 @@ export default function AdminProducts() {
                   <Label htmlFor="category">Categoria *</Label>
                   <select
                     id="category"
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    value={formData.category_id || ''}
+                    onChange={(e) => setFormData({ ...formData, category_id: e.target.value || null })}
                     className="w-full h-10 px-3 rounded-lg bg-secondary border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                     required
                   >
+                    <option value="">Selecione...</option>
                     {categories.map((cat) => (
                       <option key={cat.id} value={cat.id}>
-                        {cat.name}
+                        {cat.icon} {cat.name}
                       </option>
                     ))}
                   </select>
@@ -402,6 +460,41 @@ export default function AdminProducts() {
                   <span className="text-sm">Disponível</span>
                 </label>
               </div>
+
+              {/* Addon Groups Section */}
+              {addonGroups.length > 0 && (
+                <div className="space-y-3 pt-4 border-t border-border">
+                  <div className="flex items-center gap-2">
+                    <Puzzle className="h-4 w-4 text-primary" />
+                    <Label>Grupos de Complementos</Label>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Selecione os grupos de complementos disponíveis para este produto
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {addonGroups.map((group) => (
+                      <label
+                        key={group.id}
+                        className={cn(
+                          "flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-colors",
+                          selectedAddonGroups.includes(group.id)
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:border-primary/50"
+                        )}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedAddonGroups.includes(group.id)}
+                          onChange={() => toggleAddonGroup(group.id)}
+                          className="rounded border-border"
+                        />
+                        <span className="text-sm">{group.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-end gap-3 pt-4 border-t border-border">
                 <Button type="button" variant="secondary" onClick={closeModal}>
                   Cancelar

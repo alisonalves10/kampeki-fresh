@@ -14,6 +14,86 @@ export type Database = {
   }
   public: {
     Tables: {
+      addon_groups: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          is_required: boolean | null
+          max_selections: number | null
+          min_selections: number | null
+          name: string
+          sort_order: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_required?: boolean | null
+          max_selections?: number | null
+          min_selections?: number | null
+          name: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_required?: boolean | null
+          max_selections?: number | null
+          min_selections?: number | null
+          name?: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      addon_options: {
+        Row: {
+          additional_price: number | null
+          created_at: string
+          group_id: string
+          id: string
+          is_available: boolean | null
+          name: string
+          sort_order: number | null
+          updated_at: string
+        }
+        Insert: {
+          additional_price?: number | null
+          created_at?: string
+          group_id: string
+          id?: string
+          is_available?: boolean | null
+          name: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Update: {
+          additional_price?: number | null
+          created_at?: string
+          group_id?: string
+          id?: string
+          is_available?: boolean | null
+          name?: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "addon_options_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "addon_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       addresses: {
         Row: {
           city: string
@@ -62,6 +142,36 @@ export type Database = {
         }
         Relationships: []
       }
+      categories: {
+        Row: {
+          created_at: string
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          sort_order: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       coupons: {
         Row: {
           code: string
@@ -105,6 +215,7 @@ export type Database = {
         Row: {
           badge: string | null
           category: string
+          category_id: string | null
           contains_shrimp: boolean | null
           created_at: string
           description: string | null
@@ -120,6 +231,7 @@ export type Database = {
         Insert: {
           badge?: string | null
           category: string
+          category_id?: string | null
           contains_shrimp?: boolean | null
           created_at?: string
           description?: string | null
@@ -135,6 +247,7 @@ export type Database = {
         Update: {
           badge?: string | null
           category?: string
+          category_id?: string | null
           contains_shrimp?: boolean | null
           created_at?: string
           description?: string | null
@@ -147,7 +260,15 @@ export type Database = {
           sort_order?: number | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "db_products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       order_items: {
         Row: {
@@ -276,6 +397,42 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      product_addon_groups: {
+        Row: {
+          addon_group_id: string
+          created_at: string
+          id: string
+          product_id: string
+        }
+        Insert: {
+          addon_group_id: string
+          created_at?: string
+          id?: string
+          product_id: string
+        }
+        Update: {
+          addon_group_id?: string
+          created_at?: string
+          id?: string
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_addon_groups_addon_group_id_fkey"
+            columns: ["addon_group_id"]
+            isOneToOne: false
+            referencedRelation: "addon_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_addon_groups_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "db_products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {

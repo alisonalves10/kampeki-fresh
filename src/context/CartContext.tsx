@@ -1,10 +1,14 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { Product } from '@/data/products';
 import { supabase } from '@/integrations/supabase/client';
+import { SelectedAddon } from '@/components/AddonSelectionModal';
 
 export interface CartItem {
   product: Product;
   quantity: number;
+  selectedAddons?: SelectedAddon[];
+  addonsTotalPrice?: number;
+  cartItemId: string; // Unique identifier for each cart item (allows same product with different addons)
 }
 
 export interface Coupon {
@@ -22,9 +26,9 @@ interface DeliverySettings {
 
 interface CartContextType {
   items: CartItem[];
-  addItem: (product: Product) => void;
-  removeItem: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
+  addItem: (product: Product, selectedAddons?: SelectedAddon[], addonsTotalPrice?: number) => void;
+  removeItem: (cartItemId: string) => void;
+  updateQuantity: (cartItemId: string, quantity: number) => void;
   clearCart: () => void;
   totalItems: number;
   subtotal: number;
@@ -56,6 +60,9 @@ const DEFAULT_DELIVERY_SETTINGS: DeliverySettings = {
   free_above: 150
 };
 
+// Generate unique ID for cart items
+const generateCartItemId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -81,33 +88,46 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     fetchDeliverySettings();
   }, []);
 
-  const addItem = useCallback((product: Product) => {
+  const addItem = useCallback((product: Product, selectedAddons?: SelectedAddon[], addonsTotalPrice?: number) => {
     setItems(current => {
-      const existingItem = current.find(item => item.product.id === product.id);
-      if (existingItem) {
-        return current.map(item =>
-          item.product.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
+      // If no addons, check if product already exists without addons
+      if (!selectedAddons || selectedAddons.length === 0) {
+        const existingItem = current.find(
+          item => item.product.id === product.id && (!item.selectedAddons || item.selectedAddons.length === 0)
         );
+        if (existingItem) {
+          return current.map(item =>
+            item.cartItemId === existingItem.cartItemId
+              ? { ...item, quantity: item.quantity + 1 }
+              : item
+          );
+        }
       }
-      return [...current, { product, quantity: 1 }];
+      
+      // Add as new item with unique cartItemId
+      return [...current, {
+        product,
+        quantity: 1,
+        selectedAddons,
+        addonsTotalPrice: addonsTotalPrice || 0,
+        cartItemId: generateCartItemId(),
+      }];
     });
     setIsCartOpen(true);
   }, []);
 
-  const removeItem = useCallback((productId: string) => {
-    setItems(current => current.filter(item => item.product.id !== productId));
+  const removeItem = useCallback((cartItemId: string) => {
+    setItems(current => current.filter(item => item.cartItemId !== cartItemId));
   }, []);
 
-  const updateQuantity = useCallback((productId: string, quantity: number) => {
+  const updateQuantity = useCallback((cartItemId: string, quantity: number) => {
     if (quantity <= 0) {
-      removeItem(productId);
+      removeItem(cartItemId);
       return;
     }
     setItems(current =>
       current.map(item =>
-        item.product.id === productId ? { ...item, quantity } : item
+        item.cartItemId === cartItemId ? { ...item, quantity } : item
       )
     );
   }, [removeItem]);
@@ -172,10 +192,16 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
+  
+  // Subtotal includes product price + addons price
   const subtotal = items.reduce(
-    (sum, item) => sum + item.product.price * item.quantity,
+    (sum, item) => {
+      const itemPrice = item.product.price + (item.addonsTotalPrice || 0);
+      return sum + itemPrice * item.quantity;
+    },
     0
   );
+  
   const deliveryFee = deliveryMode === 'pickup' ? 0 : subtotal >= deliverySettings.free_above ? 0 : deliverySettings.fee;
 
   // Calculate coupon discount
