@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Package, Tag, ShoppingBag, LogOut, Menu, X, ChevronLeft, Users } from 'lucide-react';
+import { LayoutDashboard, Package, Tag, ShoppingBag, LogOut, Menu, X, ChevronLeft, Users, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,6 +19,7 @@ const baseNavItems: NavItem[] = [
   { path: '/admin/orders', label: 'Pedidos', icon: ShoppingBag },
   { path: '/admin/products', label: 'Produtos', icon: Package },
   { path: '/admin/coupons', label: 'Cupons', icon: Tag },
+  { path: '/admin/settings', label: 'Configurações', icon: Settings },
 ];
 
 const adminOnlyNavItems: NavItem[] = [
