@@ -14,8 +14,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
-        serif: ['Playfair Display', 'serif'],
+        sans: ['Plus Jakarta Sans', 'sans-serif'],
+        display: ['Space Grotesk', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -51,15 +51,20 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        gold: {
-          DEFAULT: "hsl(var(--gold))",
-          soft: "hsl(var(--gold-soft))",
-        },
-        salmon: "hsl(var(--salmon))",
         success: {
           DEFAULT: "hsl(var(--success))",
           foreground: "hsl(var(--success-foreground))",
         },
+        // Delivery2U specific colors
+        "d2u-teal": {
+          DEFAULT: "hsl(var(--d2u-teal))",
+          light: "hsl(var(--d2u-teal-light))",
+        },
+        "d2u-orange": {
+          DEFAULT: "hsl(var(--d2u-orange))",
+          light: "hsl(var(--d2u-orange-light))",
+        },
+        "d2u-green": "hsl(var(--d2u-green))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -75,6 +80,8 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        xl: "calc(var(--radius) + 4px)",
+        "2xl": "calc(var(--radius) + 8px)",
       },
       keyframes: {
         "accordion-down": {
@@ -101,6 +108,14 @@ export default {
           "0%, 100%": { transform: "translateY(0px)" },
           "50%": { transform: "translateY(-10px)" },
         },
+        "fade-up": {
+          "0%": { opacity: "0", transform: "translateY(20px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        "scale-in": {
+          "0%": { opacity: "0", transform: "scale(0.95)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -109,10 +124,14 @@ export default {
         "slide-out-right": "slide-out-right 0.3s ease-out",
         "bounce-subtle": "bounce-subtle 2s ease-in-out infinite",
         "float": "float 3s ease-in-out infinite",
+        "fade-up": "fade-up 0.5s ease-out forwards",
+        "scale-in": "scale-in 0.3s ease-out forwards",
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-        'gradient-warm': 'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%)',
+        'gradient-teal': 'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--d2u-teal-light)) 100%)',
+        'gradient-orange': 'linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(var(--d2u-orange-light)) 100%)',
+        'gradient-hero': 'linear-gradient(135deg, hsl(var(--primary) / 0.1) 0%, hsl(var(--accent) / 0.1) 100%)',
       },
     },
   },
