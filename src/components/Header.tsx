@@ -1,12 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingCart, User, MapPin, Clock, Gift, Menu, X, Search, LogOut, Package, LayoutDashboard } from 'lucide-react';
+import { ShoppingCart, User, MapPin, Clock, Gift, Menu, X, Search, LogOut, Package, LayoutDashboard, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
-
 interface HeaderProps {
   onCartClick?: () => void;
 }
@@ -74,12 +81,6 @@ export const Header = ({ onCartClick }: HeaderProps) => {
 
           {/* Actions */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Points - Desktop */}
-            <Button variant="ghost" size="sm" className="hidden lg:flex items-center gap-2 text-muted-foreground hover:text-foreground">
-              <Gift className="h-4 w-4 text-primary" />
-              <span className="text-sm">{profile?.points ?? 0} pts</span>
-            </Button>
-
             {/* Admin Panel - Desktop (only for admins/lojistas) */}
             {hasAdminAccess && (
               <Button 
@@ -93,55 +94,47 @@ export const Header = ({ onCartClick }: HeaderProps) => {
               </Button>
             )}
 
-            {/* Orders - Desktop (only when logged in) */}
-            {user && (
-              <>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="hidden lg:flex items-center gap-2 text-muted-foreground hover:text-foreground"
-                  onClick={() => navigate('/orders')}
-                >
-                  <Package className="h-4 w-4" />
-                  <span className="text-sm">Pedidos</span>
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="hidden lg:flex items-center gap-2 text-muted-foreground hover:text-foreground"
-                  onClick={() => navigate('/profile')}
-                >
-                  <User className="h-4 w-4" />
-                  <span className="text-sm">Minha Conta</span>
-                </Button>
-              </>
-            )}
-
-            {/* Login/User */}
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="hidden sm:flex items-center gap-2"
-              onClick={handleAuthClick}
-            >
-              {user ? (
-                <>
-                  <LogOut className="h-4 w-4" />
-                  <span className="hidden md:inline">Sair</span>
-                </>
-              ) : (
-                <>
-                  <User className="h-4 w-4" />
-                  <span className="hidden md:inline">Entrar</span>
-                </>
-              )}
-            </Button>
-
-            {/* User Name Badge - when logged in */}
-            {user && profile?.name && (
-              <span className="hidden lg:inline text-sm text-muted-foreground">
-                Olá, <span className="text-foreground font-medium">{profile.name.split(' ')[0]}</span>
-              </span>
+            {/* User Menu Dropdown or Login Button */}
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="hidden lg:flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    <span>Olá, {profile?.name?.split(' ')[0] ?? 'Usuário'}</span>
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48 bg-popover">
+                  <DropdownMenuLabel className="flex items-center gap-2">
+                    <Gift className="h-4 w-4 text-primary" />
+                    {profile?.points ?? 0} pontos
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate('/profile')} className="cursor-pointer">
+                    <User className="h-4 w-4 mr-2" />
+                    Minha Conta
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/orders')} className="cursor-pointer">
+                    <Package className="h-4 w-4 mr-2" />
+                    Meus Pedidos
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => signOut()} className="cursor-pointer text-destructive">
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Sair
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="hidden sm:flex items-center gap-2"
+                onClick={() => navigate('/auth')}
+              >
+                <User className="h-4 w-4" />
+                <span className="hidden md:inline">Entrar</span>
+              </Button>
             )}
 
             {/* Cart Button */}
