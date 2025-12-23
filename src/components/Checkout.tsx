@@ -45,8 +45,17 @@ interface CheckoutProps {
 
 type PaymentMethod = 'pix' | 'card' | 'cash';
 
-// Endereço do estabelecimento para retirada
-const STORE_ADDRESS = {
+interface StoreAddress {
+  street: string;
+  number: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+  formatted: string;
+}
+
+// Endereço padrão caso não carregue do banco
+const DEFAULT_STORE_ADDRESS: StoreAddress = {
   street: 'Rua das Palmeiras',
   number: '123',
   neighborhood: 'Centro',
@@ -81,9 +90,15 @@ const Checkout = ({ onBack, onComplete }: CheckoutProps) => {
   const [orderNotes, setOrderNotes] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingAddresses, setIsLoadingAddresses] = useState(true);
+  const [storeAddress, setStoreAddress] = useState<StoreAddress>(DEFAULT_STORE_ADDRESS);
 
   // Passos: 1=Modo, 2=Endereço(se delivery), 3=Pagamento, 4=Confirmação
   const totalSteps = deliveryMode === 'delivery' ? 4 : 3;
+
+  // Fetch store address on mount
+  useEffect(() => {
+    fetchStoreAddress();
+  }, []);
 
   useEffect(() => {
     if (deliveryMode === 'delivery') {
@@ -92,6 +107,18 @@ const Checkout = ({ onBack, onComplete }: CheckoutProps) => {
       setIsLoadingAddresses(false);
     }
   }, [deliveryMode]);
+
+  const fetchStoreAddress = async () => {
+    const { data, error } = await supabase
+      .from('store_settings')
+      .select('value')
+      .eq('key', 'store_address')
+      .single();
+
+    if (!error && data) {
+      setStoreAddress(data.value as unknown as StoreAddress);
+    }
+  };
 
   // Quando mudar o modo de entrega, resetar o passo de endereço se necessário
   const handleDeliveryModeChange = (mode: 'delivery' | 'pickup') => {
@@ -372,7 +399,7 @@ const Checkout = ({ onBack, onComplete }: CheckoutProps) => {
           <div className="flex-1">
             <span className="font-medium">Retirar no local</span>
             <p className="text-sm text-muted-foreground mt-1">
-              {STORE_ADDRESS.formatted}
+              {storeAddress.formatted}
             </p>
             <p className="text-xs text-green-600 mt-1 font-medium">
               Sem taxa de entrega
@@ -572,7 +599,7 @@ const Checkout = ({ onBack, onComplete }: CheckoutProps) => {
             <p className="text-sm">
               {deliveryMode === 'delivery' && selectedAddress
                 ? formatAddress(selectedAddress)
-                : STORE_ADDRESS.formatted}
+                : storeAddress.formatted}
             </p>
           </div>
         </div>
