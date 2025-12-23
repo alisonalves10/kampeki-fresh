@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
+import { useStoreStatus } from '@/hooks/useStoreStatus';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 interface HeaderProps {
@@ -21,6 +22,7 @@ interface HeaderProps {
 export const Header = ({ onCartClick }: HeaderProps) => {
   const { totalItems, deliveryMode, setDeliveryMode } = useCart();
   const { user, profile, signOut } = useAuth();
+  const { isOpen: isStoreOpen, statusMessage } = useStoreStatus();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [hasAdminAccess, setHasAdminAccess] = useState(false);
   const navigate = useNavigate();
@@ -182,10 +184,17 @@ export const Header = ({ onCartClick }: HeaderProps) => {
             <div className="flex items-center gap-4">
               {/* Status */}
               <div className="flex items-center gap-2 text-sm">
-                <span className="h-2 w-2 rounded-full bg-destructive animate-pulse" />
-                <span className="text-muted-foreground">Fechado</span>
+                <span className={cn(
+                  "h-2 w-2 rounded-full",
+                  isStoreOpen ? "bg-green-500" : "bg-destructive animate-pulse"
+                )} />
+                <span className={cn(
+                  isStoreOpen ? "text-green-500 font-medium" : "text-muted-foreground"
+                )}>
+                  {isStoreOpen ? 'Aberto' : 'Fechado'}
+                </span>
                 <Clock className="h-3.5 w-3.5 text-muted-foreground ml-1" />
-                <span className="text-muted-foreground">Abre às 18:00</span>
+                <span className="text-muted-foreground">{statusMessage}</span>
               </div>
 
               {/* Delivery/Pickup Toggle */}

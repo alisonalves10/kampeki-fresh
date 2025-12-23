@@ -4,9 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
 import { toast } from '@/hooks/use-toast';
-import { Loader2, MapPin, Save, Truck } from 'lucide-react';
-import { Json } from '@/integrations/supabase/types';
+import { Loader2, MapPin, Save, Truck, Clock } from 'lucide-react';
+import { BusinessHours, DayHours, DEFAULT_HOURS, getDayName } from '@/hooks/useStoreStatus';
 
 interface StoreAddress {
   street: string;
@@ -22,10 +23,13 @@ interface DeliverySettings {
   free_above: number;
 }
 
+const DAY_KEYS: (keyof BusinessHours)[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+
 const AdminSettings = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingAddress, setIsSavingAddress] = useState(false);
   const [isSavingDelivery, setIsSavingDelivery] = useState(false);
+  const [isSavingHours, setIsSavingHours] = useState(false);
   const [address, setAddress] = useState<StoreAddress>({
     street: '',
     number: '',
@@ -38,6 +42,7 @@ const AdminSettings = () => {
     fee: 11.99,
     free_above: 150
   });
+  const [businessHours, setBusinessHours] = useState<BusinessHours>(DEFAULT_HOURS);
 
   useEffect(() => {
     fetchSettings();
@@ -46,7 +51,7 @@ const AdminSettings = () => {
   const fetchSettings = async () => {
     setIsLoading(true);
     
-    const [addressResult, deliveryResult] = await Promise.all([
+    const [addressResult, deliveryResult, hoursResult] = await Promise.all([
       supabase
         .from('store_settings')
         .select('value')
@@ -56,6 +61,11 @@ const AdminSettings = () => {
         .from('store_settings')
         .select('value')
         .eq('key', 'delivery_settings')
+        .maybeSingle(),
+      supabase
+        .from('store_settings')
+        .select('value')
+        .eq('key', 'business_hours')
         .maybeSingle()
     ]);
 
@@ -65,6 +75,10 @@ const AdminSettings = () => {
     
     if (!deliveryResult.error && deliveryResult.data) {
       setDeliverySettings(deliveryResult.data.value as unknown as DeliverySettings);
+    }
+
+    if (!hoursResult.error && hoursResult.data) {
+      setBusinessHours(hoursResult.data.value as unknown as BusinessHours);
     }
     
     setIsLoading(false);
@@ -86,6 +100,16 @@ const AdminSettings = () => {
     setDeliverySettings(prev => ({
       ...prev,
       [field]: numValue
+    }));
+  };
+
+  const handleHoursChange = (day: keyof BusinessHours, field: keyof DayHours, value: string | boolean) => {
+    setBusinessHours(prev => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        [field]: value
+      }
     }));
   };
 
@@ -161,6 +185,30 @@ const AdminSettings = () => {
     setIsSavingDelivery(false);
   };
 
+  const handleSaveHours = async () => {
+    setIsSavingHours(true);
+
+    const { error } = await supabase
+      .from('store_settings')
+      .update({ value: JSON.parse(JSON.stringify(businessHours)) })
+      .eq('key', 'business_hours');
+
+    if (error) {
+      toast({
+        title: 'Erro ao salvar',
+        description: 'Não foi possível salvar os horários. Tente novamente.',
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: 'Horários atualizados',
+        description: 'Os horários de funcionamento foram atualizados com sucesso.',
+      });
+    }
+    
+    setIsSavingHours(false);
+  };
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -182,6 +230,65 @@ const AdminSettings = () => {
         <h1 className="text-2xl font-bold">Configurações</h1>
         <p className="text-muted-foreground">Gerencie as configurações da loja</p>
       </div>
+
+      {/* Business Hours Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            Horário de Funcionamento
+          </CardTitle>
+          <CardDescription>
+            Configure os dias e horários de funcionamento do estabelecimento.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-3">
+            {DAY_KEYS.map((day) => (
+              <div key={day} className="flex items-center gap-4 p-3 rounded-lg bg-muted/50">
+                <Switch
+                  checked={businessHours[day].enabled}
+                  onCheckedChange={(checked) => handleHoursChange(day, 'enabled', checked)}
+                />
+                <span className="w-24 font-medium">{getDayName(day)}</span>
+                {businessHours[day].enabled ? (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="time"
+                      value={businessHours[day].open}
+                      onChange={(e) => handleHoursChange(day, 'open', e.target.value)}
+                      className="w-32"
+                    />
+                    <span className="text-muted-foreground">às</span>
+                    <Input
+                      type="time"
+                      value={businessHours[day].close}
+                      onChange={(e) => handleHoursChange(day, 'close', e.target.value)}
+                      className="w-32"
+                    />
+                  </div>
+                ) : (
+                  <span className="text-muted-foreground">Fechado</span>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <Button onClick={handleSaveHours} disabled={isSavingHours} className="w-full md:w-auto">
+            {isSavingHours ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Salvando...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                Salvar Horários
+              </>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* Delivery Settings Card */}
       <Card>
