@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
-import { Loader2, MapPin, Save } from 'lucide-react';
+import { Loader2, MapPin, Save, Truck } from 'lucide-react';
+import { Json } from '@/integrations/supabase/types';
 
 interface StoreAddress {
   street: string;
@@ -16,9 +17,15 @@ interface StoreAddress {
   formatted: string;
 }
 
+interface DeliverySettings {
+  fee: number;
+  free_above: number;
+}
+
 const AdminSettings = () => {
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
+  const [isSavingAddress, setIsSavingAddress] = useState(false);
+  const [isSavingDelivery, setIsSavingDelivery] = useState(false);
   const [address, setAddress] = useState<StoreAddress>({
     street: '',
     number: '',
@@ -27,22 +34,39 @@ const AdminSettings = () => {
     state: 'SP',
     formatted: ''
   });
+  const [deliverySettings, setDeliverySettings] = useState<DeliverySettings>({
+    fee: 11.99,
+    free_above: 150
+  });
 
   useEffect(() => {
-    fetchStoreAddress();
+    fetchSettings();
   }, []);
 
-  const fetchStoreAddress = async () => {
+  const fetchSettings = async () => {
     setIsLoading(true);
-    const { data, error } = await supabase
-      .from('store_settings')
-      .select('value')
-      .eq('key', 'store_address')
-      .single();
+    
+    const [addressResult, deliveryResult] = await Promise.all([
+      supabase
+        .from('store_settings')
+        .select('value')
+        .eq('key', 'store_address')
+        .maybeSingle(),
+      supabase
+        .from('store_settings')
+        .select('value')
+        .eq('key', 'delivery_settings')
+        .maybeSingle()
+    ]);
 
-    if (!error && data) {
-      setAddress(data.value as unknown as StoreAddress);
+    if (!addressResult.error && addressResult.data) {
+      setAddress(addressResult.data.value as unknown as StoreAddress);
     }
+    
+    if (!deliveryResult.error && deliveryResult.data) {
+      setDeliverySettings(deliveryResult.data.value as unknown as DeliverySettings);
+    }
+    
     setIsLoading(false);
   };
 
@@ -50,14 +74,22 @@ const AdminSettings = () => {
     return `${addr.street}, ${addr.number} - ${addr.neighborhood}, ${addr.city}/${addr.state}`;
   };
 
-  const handleChange = (field: keyof StoreAddress, value: string) => {
+  const handleAddressChange = (field: keyof StoreAddress, value: string) => {
     setAddress(prev => ({
       ...prev,
       [field]: value
     }));
   };
 
-  const handleSave = async () => {
+  const handleDeliveryChange = (field: keyof DeliverySettings, value: string) => {
+    const numValue = parseFloat(value.replace(',', '.')) || 0;
+    setDeliverySettings(prev => ({
+      ...prev,
+      [field]: numValue
+    }));
+  };
+
+  const handleSaveAddress = async () => {
     if (!address.street || !address.number || !address.neighborhood || !address.city || !address.state) {
       toast({
         title: 'Campos obrigatórios',
@@ -67,7 +99,7 @@ const AdminSettings = () => {
       return;
     }
 
-    setIsSaving(true);
+    setIsSavingAddress(true);
     
     const updatedAddress = {
       ...address,
@@ -93,7 +125,47 @@ const AdminSettings = () => {
       });
     }
     
-    setIsSaving(false);
+    setIsSavingAddress(false);
+  };
+
+  const handleSaveDelivery = async () => {
+    if (deliverySettings.fee < 0 || deliverySettings.free_above < 0) {
+      toast({
+        title: 'Valores inválidos',
+        description: 'Os valores não podem ser negativos.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSavingDelivery(true);
+
+    const { error } = await supabase
+      .from('store_settings')
+      .update({ value: JSON.parse(JSON.stringify(deliverySettings)) })
+      .eq('key', 'delivery_settings');
+
+    if (error) {
+      toast({
+        title: 'Erro ao salvar',
+        description: 'Não foi possível salvar as configurações de entrega. Tente novamente.',
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: 'Configurações atualizadas',
+        description: 'As configurações de entrega foram atualizadas com sucesso.',
+      });
+    }
+    
+    setIsSavingDelivery(false);
+  };
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(price);
   };
 
   if (isLoading) {
@@ -111,6 +183,79 @@ const AdminSettings = () => {
         <p className="text-muted-foreground">Gerencie as configurações da loja</p>
       </div>
 
+      {/* Delivery Settings Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Truck className="h-5 w-5" />
+            Taxa de Entrega
+          </CardTitle>
+          <CardDescription>
+            Configure a taxa de entrega e o valor mínimo para frete grátis.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="fee">Taxa de Entrega (R$)</Label>
+              <Input
+                id="fee"
+                type="number"
+                step="0.01"
+                min="0"
+                value={deliverySettings.fee}
+                onChange={(e) => handleDeliveryChange('fee', e.target.value)}
+                placeholder="11.99"
+              />
+              <p className="text-xs text-muted-foreground">
+                Valor cobrado para entregas
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="free_above">Frete Grátis Acima de (R$)</Label>
+              <Input
+                id="free_above"
+                type="number"
+                step="0.01"
+                min="0"
+                value={deliverySettings.free_above}
+                onChange={(e) => handleDeliveryChange('free_above', e.target.value)}
+                placeholder="150"
+              />
+              <p className="text-xs text-muted-foreground">
+                Pedidos acima deste valor terão frete grátis (0 = nunca grátis)
+              </p>
+            </div>
+          </div>
+
+          <div className="p-4 bg-muted rounded-lg">
+            <p className="text-sm text-muted-foreground">Preview:</p>
+            <p className="font-medium">
+              Taxa: {formatPrice(deliverySettings.fee)} | 
+              {deliverySettings.free_above > 0 
+                ? ` Grátis acima de ${formatPrice(deliverySettings.free_above)}`
+                : ' Sem frete grátis'}
+            </p>
+          </div>
+
+          <Button onClick={handleSaveDelivery} disabled={isSavingDelivery} className="w-full md:w-auto">
+            {isSavingDelivery ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Salvando...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                Salvar Taxa de Entrega
+              </>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Store Address Card */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -128,7 +273,7 @@ const AdminSettings = () => {
               <Input
                 id="street"
                 value={address.street}
-                onChange={(e) => handleChange('street', e.target.value)}
+                onChange={(e) => handleAddressChange('street', e.target.value)}
                 placeholder="Ex: Rua das Palmeiras"
                 maxLength={100}
               />
@@ -139,7 +284,7 @@ const AdminSettings = () => {
               <Input
                 id="number"
                 value={address.number}
-                onChange={(e) => handleChange('number', e.target.value)}
+                onChange={(e) => handleAddressChange('number', e.target.value)}
                 placeholder="Ex: 123"
                 maxLength={10}
               />
@@ -150,7 +295,7 @@ const AdminSettings = () => {
               <Input
                 id="neighborhood"
                 value={address.neighborhood}
-                onChange={(e) => handleChange('neighborhood', e.target.value)}
+                onChange={(e) => handleAddressChange('neighborhood', e.target.value)}
                 placeholder="Ex: Centro"
                 maxLength={50}
               />
@@ -161,7 +306,7 @@ const AdminSettings = () => {
               <Input
                 id="city"
                 value={address.city}
-                onChange={(e) => handleChange('city', e.target.value)}
+                onChange={(e) => handleAddressChange('city', e.target.value)}
                 placeholder="Ex: São Paulo"
                 maxLength={50}
               />
@@ -172,7 +317,7 @@ const AdminSettings = () => {
               <Input
                 id="state"
                 value={address.state}
-                onChange={(e) => handleChange('state', e.target.value.toUpperCase())}
+                onChange={(e) => handleAddressChange('state', e.target.value.toUpperCase())}
                 placeholder="Ex: SP"
                 maxLength={2}
               />
@@ -186,8 +331,8 @@ const AdminSettings = () => {
             </div>
           )}
 
-          <Button onClick={handleSave} disabled={isSaving} className="w-full md:w-auto">
-            {isSaving ? (
+          <Button onClick={handleSaveAddress} disabled={isSavingAddress} className="w-full md:w-auto">
+            {isSavingAddress ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 Salvando...
