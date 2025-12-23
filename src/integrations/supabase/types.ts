@@ -434,6 +434,48 @@ export type Database = {
           },
         ]
       }
+      product_included_items: {
+        Row: {
+          created_at: string
+          id: string
+          included_product_id: string
+          product_id: string
+          quantity: number
+          sort_order: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          included_product_id: string
+          product_id: string
+          quantity?: number
+          sort_order?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          included_product_id?: string
+          product_id?: string
+          quantity?: number
+          sort_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_included_items_included_product_id_fkey"
+            columns: ["included_product_id"]
+            isOneToOne: false
+            referencedRelation: "db_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_included_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "db_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string

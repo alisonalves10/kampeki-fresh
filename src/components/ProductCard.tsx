@@ -32,10 +32,13 @@ export const ProductCard = ({ product }: ProductCardProps) => {
   const { addItem } = useCart();
   const imageSrc = imageMap[product.image] || comboSalmao;
   const [hasAddons, setHasAddons] = useState(false);
+  const [hasIncludedItems, setHasIncludedItems] = useState(false);
+  const [includedCount, setIncludedCount] = useState(0);
   const [isAddonModalOpen, setIsAddonModalOpen] = useState(false);
 
   useEffect(() => {
     checkForAddons();
+    checkForIncludedItems();
   }, [product.id]);
 
   const checkForAddons = async () => {
@@ -47,6 +50,22 @@ export const ProductCard = ({ product }: ProductCardProps) => {
     setHasAddons((count || 0) > 0);
   };
 
+  const checkForIncludedItems = async () => {
+    const { data } = await supabase
+      .from('product_included_items')
+      .select('quantity')
+      .eq('product_id', product.id);
+    
+    if (data && data.length > 0) {
+      setHasIncludedItems(true);
+      const total = data.reduce((sum, item) => sum + (item.quantity || 0), 0);
+      setIncludedCount(total);
+    } else {
+      setHasIncludedItems(false);
+      setIncludedCount(0);
+    }
+  };
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -55,7 +74,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
   };
 
   const handleAddClick = () => {
-    if (hasAddons) {
+    if (hasAddons || hasIncludedItems) {
       setIsAddonModalOpen(true);
     } else {
       addItem(product);
@@ -92,9 +111,16 @@ export const ProductCard = ({ product }: ProductCardProps) => {
           )}
 
           {/* Addons indicator */}
-          {hasAddons && (
+          {hasAddons && !hasIncludedItems && (
             <div className="absolute top-3 right-3 bg-secondary/90 backdrop-blur-sm rounded-full p-1.5">
               <Puzzle className="h-3.5 w-3.5 text-primary" />
+            </div>
+          )}
+
+          {/* Combo indicator */}
+          {hasIncludedItems && (
+            <div className="absolute top-3 right-3 bg-primary/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
+              <span className="text-xs font-medium text-primary-foreground">Combo {includedCount} itens</span>
             </div>
           )}
 

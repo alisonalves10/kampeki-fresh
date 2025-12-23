@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, Search, X, Puzzle } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, X, Puzzle, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -37,6 +37,13 @@ interface ProductAddonGroup {
   addon_group_id: string;
 }
 
+interface IncludedItem {
+  id?: string;
+  included_product_id: string;
+  quantity: number;
+  product_name?: string;
+}
+
 const emptyProduct = {
   name: '',
   description: '',
@@ -61,6 +68,7 @@ export default function AdminProducts() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState(emptyProduct);
   const [selectedAddonGroups, setSelectedAddonGroups] = useState<string[]>([]);
+  const [includedItems, setIncludedItems] = useState<IncludedItem[]>([]);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
@@ -91,6 +99,26 @@ export default function AdminProducts() {
     return (data || []).map(d => d.addon_group_id);
   };
 
+  const fetchIncludedItems = async (productId: string) => {
+    const { data } = await supabase
+      .from('product_included_items')
+      .select(`
+        id,
+        included_product_id,
+        quantity,
+        db_products!product_included_items_included_product_id_fkey (name)
+      `)
+      .eq('product_id', productId)
+      .order('sort_order');
+    
+    return (data || []).map((d: any) => ({
+      id: d.id,
+      included_product_id: d.included_product_id,
+      quantity: d.quantity,
+      product_name: d.db_products?.name || '',
+    }));
+  };
+
   const openModal = async (product?: Product) => {
     if (product) {
       setEditingProduct(product);
@@ -106,12 +134,17 @@ export default function AdminProducts() {
         servings: product.servings,
         is_available: product.is_available,
       });
-      const linkedGroups = await fetchProductAddonGroups(product.id);
+      const [linkedGroups, linked] = await Promise.all([
+        fetchProductAddonGroups(product.id),
+        fetchIncludedItems(product.id),
+      ]);
       setSelectedAddonGroups(linkedGroups);
+      setIncludedItems(linked);
     } else {
       setEditingProduct(null);
       setFormData(emptyProduct);
       setSelectedAddonGroups([]);
+      setIncludedItems([]);
     }
     setIsModalOpen(true);
   };
@@ -121,6 +154,7 @@ export default function AdminProducts() {
     setEditingProduct(null);
     setFormData(emptyProduct);
     setSelectedAddonGroups([]);
+    setIncludedItems([]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -184,6 +218,24 @@ export default function AdminProducts() {
         await supabase.from('product_addon_groups').insert(links);
       }
 
+      // Handle included items
+      if (editingProduct) {
+        await supabase
+          .from('product_included_items')
+          .delete()
+          .eq('product_id', productId);
+      }
+
+      if (includedItems.length > 0) {
+        const includedLinks = includedItems.map((item, idx) => ({
+          product_id: productId,
+          included_product_id: item.included_product_id,
+          quantity: item.quantity,
+          sort_order: idx,
+        }));
+        await supabase.from('product_included_items').insert(includedLinks);
+      }
+
       closeModal();
       fetchData();
     } catch (error: any) {
@@ -228,6 +280,37 @@ export default function AdminProducts() {
         : [...prev, groupId]
     );
   };
+
+  const addIncludedItem = (productId: string) => {
+    if (includedItems.length >= 10) return;
+    if (includedItems.some(i => i.included_product_id === productId)) return;
+    if (editingProduct && productId === editingProduct.id) return;
+    
+    const prod = products.find(p => p.id === productId);
+    if (!prod) return;
+    
+    setIncludedItems(prev => [...prev, {
+      included_product_id: productId,
+      quantity: 1,
+      product_name: prod.name,
+    }]);
+  };
+
+  const removeIncludedItem = (productId: string) => {
+    setIncludedItems(prev => prev.filter(i => i.included_product_id !== productId));
+  };
+
+  const updateIncludedItemQuantity = (productId: string, quantity: number) => {
+    if (quantity < 1) return;
+    setIncludedItems(prev => 
+      prev.map(i => i.included_product_id === productId ? { ...i, quantity } : i)
+    );
+  };
+
+  const availableProductsForInclusion = products.filter(p => 
+    p.id !== editingProduct?.id && 
+    !includedItems.some(i => i.included_product_id === p.id)
+  );
 
   const filteredProducts = products.filter((product) => {
     if (categoryFilter !== 'all') {
@@ -493,6 +576,77 @@ export default function AdminProducts() {
                   </div>
                 </div>
               )}
+
+              {/* Included Products Section */}
+              <div className="space-y-3 pt-4 border-t border-border">
+                <div className="flex items-center gap-2">
+                  <Package className="h-4 w-4 text-primary" />
+                  <Label>Produtos Incluídos (Combo)</Label>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Adicione até 10 produtos que fazem parte deste combo/kit
+                </p>
+                
+                {/* List of included items */}
+                {includedItems.length > 0 && (
+                  <div className="space-y-2">
+                    {includedItems.map((item) => (
+                      <div 
+                        key={item.included_product_id}
+                        className="flex items-center gap-2 p-2 rounded-lg bg-secondary/50 border border-border"
+                      >
+                        <span className="flex-1 text-sm truncate">{item.product_name}</span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => updateIncludedItemQuantity(item.included_product_id, item.quantity - 1)}
+                            className="p-1 rounded bg-background hover:bg-muted"
+                          >
+                            <span className="text-xs font-bold">−</span>
+                          </button>
+                          <span className="w-8 text-center text-sm">{item.quantity}</span>
+                          <button
+                            type="button"
+                            onClick={() => updateIncludedItemQuantity(item.included_product_id, item.quantity + 1)}
+                            className="p-1 rounded bg-background hover:bg-muted"
+                          >
+                            <span className="text-xs font-bold">+</span>
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeIncludedItem(item.included_product_id)}
+                          className="p-1 text-destructive hover:bg-destructive/10 rounded"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Add product selector */}
+                {includedItems.length < 10 && (
+                  <select
+                    value=""
+                    onChange={(e) => {
+                      if (e.target.value) addIncludedItem(e.target.value);
+                    }}
+                    className="w-full h-10 px-3 rounded-lg bg-secondary border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  >
+                    <option value="">+ Adicionar produto ao combo...</option>
+                    {availableProductsForInclusion.map((prod) => (
+                      <option key={prod.id} value={prod.id}>
+                        {prod.name} - {formatPrice(prod.price)}
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                {includedItems.length >= 10 && (
+                  <p className="text-xs text-amber-500">Limite de 10 produtos atingido</p>
+                )}
+              </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-border">
                 <Button type="button" variant="secondary" onClick={closeModal}>
