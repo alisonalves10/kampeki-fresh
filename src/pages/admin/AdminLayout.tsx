@@ -1,16 +1,28 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Package, Tag, ShoppingBag, LogOut, Menu, X, ChevronLeft } from 'lucide-react';
+import { LayoutDashboard, Package, Tag, ShoppingBag, LogOut, Menu, X, ChevronLeft, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
-const navItems = [
+interface NavItem {
+  path: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  exact?: boolean;
+  adminOnly?: boolean;
+}
+
+const baseNavItems: NavItem[] = [
   { path: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { path: '/admin/orders', label: 'Pedidos', icon: ShoppingBag },
   { path: '/admin/products', label: 'Produtos', icon: Package },
   { path: '/admin/coupons', label: 'Cupons', icon: Tag },
+];
+
+const adminOnlyNavItems: NavItem[] = [
+  { path: '/admin/users', label: 'Usuários', icon: Users, adminOnly: true },
 ];
 
 export default function AdminLayout() {
@@ -18,6 +30,7 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [isTrueAdmin, setIsTrueAdmin] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
@@ -41,11 +54,18 @@ export default function AdminLayout() {
 
     if (error || !data) {
       setIsAdmin(false);
+      setIsTrueAdmin(false);
       return;
     }
 
     setIsAdmin(true);
+    setIsTrueAdmin(data.role === 'admin');
   };
+
+  // Get nav items based on role
+  const navItems = isTrueAdmin 
+    ? [...baseNavItems, ...adminOnlyNavItems] 
+    : baseNavItems;
 
   if (authLoading || isAdmin === null) {
     return (
