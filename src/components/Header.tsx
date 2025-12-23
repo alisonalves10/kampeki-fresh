@@ -15,25 +15,25 @@ export const Header = ({ onCartClick }: HeaderProps) => {
   const { totalItems, deliveryMode, setDeliveryMode } = useCart();
   const { user, profile, signOut } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [hasAdminAccess, setHasAdminAccess] = useState(false);
   const navigate = useNavigate();
 
-  // Check if user is admin
+  // Check if user is admin or lojista
   useEffect(() => {
-    const checkAdminRole = async () => {
+    const checkAdminOrLojistaRole = async () => {
       if (user) {
         const { data } = await supabase
           .from('user_roles')
           .select('role')
           .eq('user_id', user.id)
-          .eq('role', 'admin')
+          .in('role', ['admin', 'lojista'])
           .maybeSingle();
-        setIsAdmin(!!data);
+        setHasAdminAccess(!!data);
       } else {
-        setIsAdmin(false);
+        setHasAdminAccess(false);
       }
     };
-    checkAdminRole();
+    checkAdminOrLojistaRole();
   }, [user]);
 
   const handleAuthClick = () => {
@@ -80,8 +80,8 @@ export const Header = ({ onCartClick }: HeaderProps) => {
               <span className="text-sm">{profile?.points ?? 0} pts</span>
             </Button>
 
-            {/* Admin Panel - Desktop (only for admins) */}
-            {isAdmin && (
+            {/* Admin Panel - Desktop (only for admins/lojistas) */}
+            {hasAdminAccess && (
               <Button 
                 variant="ghost" 
                 size="sm" 
@@ -265,7 +265,7 @@ export const Header = ({ onCartClick }: HeaderProps) => {
                   <span>{profile?.points ?? 0} pontos</span>
                 </Button>
               </div>
-              {isAdmin && (
+              {hasAdminAccess && (
                 <Button 
                   variant="ghost" 
                   size="sm" 
