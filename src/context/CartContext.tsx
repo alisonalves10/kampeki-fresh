@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { Product } from '@/data/products';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -13,6 +13,11 @@ export interface Coupon {
   discount_type: 'percentage' | 'fixed';
   discount_value: number;
   min_order_value: number;
+}
+
+interface DeliverySettings {
+  fee: number;
+  free_above: number;
 }
 
 interface CartContextType {
@@ -38,6 +43,7 @@ interface CartContextType {
   pointsDiscount: number;
   setPointsToRedeem: (points: number) => void;
   earnedPoints: number;
+  deliverySettings: DeliverySettings;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -45,12 +51,35 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 // 100 points = R$10 discount (1 point = R$0.10)
 const POINTS_VALUE = 0.10;
 
+const DEFAULT_DELIVERY_SETTINGS: DeliverySettings = {
+  fee: 11.99,
+  free_above: 150
+};
+
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [deliveryMode, setDeliveryMode] = useState<'delivery' | 'pickup'>('delivery');
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [pointsToRedeem, setPointsToRedeem] = useState(0);
+  const [deliverySettings, setDeliverySettings] = useState<DeliverySettings>(DEFAULT_DELIVERY_SETTINGS);
+
+  // Fetch delivery settings on mount
+  useEffect(() => {
+    const fetchDeliverySettings = async () => {
+      const { data, error } = await supabase
+        .from('store_settings')
+        .select('value')
+        .eq('key', 'delivery_settings')
+        .maybeSingle();
+
+      if (!error && data) {
+        setDeliverySettings(data.value as unknown as DeliverySettings);
+      }
+    };
+
+    fetchDeliverySettings();
+  }, []);
 
   const addItem = useCallback((product: Product) => {
     setItems(current => {
@@ -147,7 +176,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     (sum, item) => sum + item.product.price * item.quantity,
     0
   );
-  const deliveryFee = deliveryMode === 'pickup' ? 0 : subtotal >= 150 ? 0 : 11.99;
+  const deliveryFee = deliveryMode === 'pickup' ? 0 : subtotal >= deliverySettings.free_above ? 0 : deliverySettings.fee;
 
   // Calculate coupon discount
   const couponDiscount = appliedCoupon
@@ -189,6 +218,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         pointsDiscount,
         setPointsToRedeem,
         earnedPoints,
+        deliverySettings,
       }}
     >
       {children}
