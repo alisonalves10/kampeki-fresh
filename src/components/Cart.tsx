@@ -1,7 +1,10 @@
-import { X, Minus, Plus, Trash2, ShoppingBag, Truck, MapPin, CreditCard, Tag } from 'lucide-react';
+import { useState } from 'react';
+import { X, Minus, Plus, Trash2, ShoppingBag, Truck, MapPin, CreditCard, Tag, Gift, Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/context/CartContext';
+import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 import comboSalmao from '@/assets/combo-salmao.jpg';
 import comboExclusivo from '@/assets/combo-exclusivo.jpg';
 import temaki from '@/assets/temaki.jpg';
@@ -34,7 +37,20 @@ export const Cart = ({ isOpen, onClose }: CartProps) => {
     deliveryFee,
     total,
     deliveryMode,
+    appliedCoupon,
+    couponDiscount,
+    applyCoupon,
+    removeCoupon,
+    pointsToRedeem,
+    pointsDiscount,
+    setPointsToRedeem,
+    earnedPoints,
   } = useCart();
+
+  const { user, profile } = useAuth();
+  const { toast } = useToast();
+  const [couponCode, setCouponCode] = useState('');
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -42,6 +58,39 @@ export const Cart = ({ isOpen, onClose }: CartProps) => {
       currency: 'BRL',
     }).format(price);
   };
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) return;
+    
+    setIsApplyingCoupon(true);
+    const result = await applyCoupon(couponCode);
+    setIsApplyingCoupon(false);
+
+    if (result.success) {
+      toast({
+        title: "Cupom aplicado!",
+        description: result.message,
+      });
+      setCouponCode('');
+    } else {
+      toast({
+        title: "Erro",
+        description: result.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handlePointsChange = (value: number) => {
+    const maxPoints = profile?.points ?? 0;
+    // Limit points to max available and ensure min 0
+    const validPoints = Math.min(Math.max(0, value), maxPoints);
+    // Also limit to order value (no negative total)
+    const maxRedeemable = Math.floor((subtotal + deliveryFee - couponDiscount) / 0.10);
+    setPointsToRedeem(Math.min(validPoints, maxRedeemable));
+  };
+
+  const availablePoints = profile?.points ?? 0;
 
   return (
     <>
@@ -161,20 +210,113 @@ export const Cart = ({ isOpen, onClose }: CartProps) => {
                 )}
               </div>
 
-              {/* Coupon */}
-              <div className="p-3 bg-secondary/50 rounded-lg">
+              {/* Coupon Section */}
+              <div className="p-3 bg-secondary/50 rounded-lg space-y-3">
                 <div className="flex items-center gap-2">
                   <Tag className="h-4 w-4 text-primary" />
-                  <input
-                    type="text"
-                    placeholder="Código do cupom"
-                    className="flex-1 bg-transparent text-sm placeholder:text-muted-foreground focus:outline-none"
-                  />
-                  <Button variant="ghost" size="sm" className="text-primary">
-                    Aplicar
-                  </Button>
+                  <span className="text-sm font-medium">Cupom de desconto</span>
                 </div>
+                
+                {appliedCoupon ? (
+                  <div className="flex items-center justify-between bg-primary/10 p-2 rounded-lg border border-primary/20">
+                    <div className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-medium text-primary">{appliedCoupon.code}</span>
+                      <span className="text-xs text-muted-foreground">
+                        (-{appliedCoupon.discount_type === 'percentage' 
+                          ? `${appliedCoupon.discount_value}%` 
+                          : formatPrice(appliedCoupon.discount_value)})
+                      </span>
+                    </div>
+                    <button 
+                      onClick={removeCoupon}
+                      className="text-xs text-destructive hover:underline"
+                    >
+                      Remover
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Digite o código"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                      className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    />
+                    <Button 
+                      variant="secondary" 
+                      size="sm" 
+                      onClick={handleApplyCoupon}
+                      disabled={isApplyingCoupon || !couponCode.trim()}
+                    >
+                      {isApplyingCoupon ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Aplicar'}
+                    </Button>
+                  </div>
+                )}
               </div>
+
+              {/* Points Section */}
+              {user && (
+                <div className="p-3 bg-secondary/50 rounded-lg space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Gift className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-medium">Usar pontos</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      Você tem <span className="text-primary font-medium">{availablePoints}</span> pontos
+                    </span>
+                  </div>
+                  
+                  {availablePoints > 0 ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="range"
+                          min="0"
+                          max={availablePoints}
+                          value={pointsToRedeem}
+                          onChange={(e) => handlePointsChange(parseInt(e.target.value))}
+                          className="flex-1 accent-primary"
+                        />
+                        <div className="flex items-center gap-1 min-w-[80px]">
+                          <input
+                            type="number"
+                            min="0"
+                            max={availablePoints}
+                            value={pointsToRedeem}
+                            onChange={(e) => handlePointsChange(parseInt(e.target.value) || 0)}
+                            className="w-16 bg-background border border-border rounded px-2 py-1 text-sm text-center"
+                          />
+                          <span className="text-xs text-muted-foreground">pts</span>
+                        </div>
+                      </div>
+                      {pointsToRedeem > 0 && (
+                        <p className="text-xs text-primary">
+                          Desconto de {formatPrice(pointsDiscount)}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Faça pedidos para acumular pontos! R$1 = 1 ponto
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Points Earned Info */}
+              {earnedPoints > 0 && (
+                <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Gift className="h-4 w-4 text-primary" />
+                    <span className="text-sm">
+                      Você ganhará <span className="font-semibold text-primary">{earnedPoints} pontos</span> com este pedido!
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -190,10 +332,22 @@ export const Cart = ({ isOpen, onClose }: CartProps) => {
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Taxa de entrega</span>
-                <span className={deliveryFee === 0 ? 'text-success' : ''}>
+                <span className={deliveryFee === 0 ? 'text-green-500' : ''}>
                   {deliveryFee === 0 ? 'Grátis' : formatPrice(deliveryFee)}
                 </span>
               </div>
+              {couponDiscount > 0 && (
+                <div className="flex justify-between text-sm text-primary">
+                  <span>Desconto do cupom</span>
+                  <span>-{formatPrice(couponDiscount)}</span>
+                </div>
+              )}
+              {pointsDiscount > 0 && (
+                <div className="flex justify-between text-sm text-primary">
+                  <span>Desconto de pontos</span>
+                  <span>-{formatPrice(pointsDiscount)}</span>
+                </div>
+              )}
               {subtotal < 150 && deliveryMode === 'delivery' && (
                 <p className="text-xs text-muted-foreground">
                   Faltam {formatPrice(150 - subtotal)} para frete grátis
