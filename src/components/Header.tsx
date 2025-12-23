@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingCart, User, MapPin, Clock, Gift, Menu, X, Search, LogOut, Package } from 'lucide-react';
+import { ShoppingCart, User, MapPin, Clock, Gift, Menu, X, Search, LogOut, Package, LayoutDashboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
 interface HeaderProps {
@@ -14,7 +15,26 @@ export const Header = ({ onCartClick }: HeaderProps) => {
   const { totalItems, deliveryMode, setDeliveryMode } = useCart();
   const { user, profile, signOut } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
+
+  // Check if user is admin
+  useEffect(() => {
+    const checkAdminRole = async () => {
+      if (user) {
+        const { data } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .eq('role', 'admin')
+          .maybeSingle();
+        setIsAdmin(!!data);
+      } else {
+        setIsAdmin(false);
+      }
+    };
+    checkAdminRole();
+  }, [user]);
 
   const handleAuthClick = () => {
     if (user) {
@@ -59,6 +79,19 @@ export const Header = ({ onCartClick }: HeaderProps) => {
               <Gift className="h-4 w-4 text-primary" />
               <span className="text-sm">{profile?.points ?? 0} pts</span>
             </Button>
+
+            {/* Admin Panel - Desktop (only for admins) */}
+            {isAdmin && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="hidden lg:flex items-center gap-2 text-primary hover:text-primary/80"
+                onClick={() => navigate('/admin')}
+              >
+                <LayoutDashboard className="h-4 w-4" />
+                <span className="text-sm">Painel Admin</span>
+              </Button>
+            )}
 
             {/* Orders - Desktop (only when logged in) */}
             {user && (
@@ -232,6 +265,20 @@ export const Header = ({ onCartClick }: HeaderProps) => {
                   <span>{profile?.points ?? 0} pontos</span>
                 </Button>
               </div>
+              {isAdmin && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="flex items-center gap-2 justify-start text-primary"
+                  onClick={() => {
+                    navigate('/admin');
+                    setIsMobileMenuOpen(false);
+                  }}
+                >
+                  <LayoutDashboard className="h-4 w-4" />
+                  <span>Painel Admin</span>
+                </Button>
+              )}
               {user && (
                 <>
                   <Button 
