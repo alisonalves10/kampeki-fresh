@@ -1,13 +1,38 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from 'react';
+import { CartProvider, useCart } from '@/context/CartContext';
+import { Header } from '@/components/Header';
+import { Hero } from '@/components/Hero';
+import { CategoryNav } from '@/components/CategoryNav';
+import { ProductGrid } from '@/components/ProductGrid';
+import { Cart } from '@/components/Cart';
+import { Footer } from '@/components/Footer';
+
+const IndexContent = () => {
+  const [activeCategory, setActiveCategory] = useState('destaques');
+  const { isCartOpen, setIsCartOpen } = useCart();
+
+  return (
+    <div className="min-h-screen bg-background pattern-japanese">
+      <Header onCartClick={() => setIsCartOpen(true)} />
+      <main>
+        <Hero />
+        <CategoryNav
+          activeCategory={activeCategory}
+          onCategoryChange={setActiveCategory}
+        />
+        <ProductGrid activeCategory={activeCategory} />
+      </main>
+      <Footer />
+      <Cart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+    </div>
+  );
+};
 
 const Index = () => {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
-    </div>
+    <CartProvider>
+      <IndexContent />
+    </CartProvider>
   );
 };
 
