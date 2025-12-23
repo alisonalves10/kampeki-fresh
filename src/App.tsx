@@ -6,7 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
-
+import { MarketplaceCartProvider } from "./context/MarketplaceCartContext";
 // Landing & Public Pages
 import LandingPage from "./pages/landing/LandingPage";
 import RestaurantsList from "./pages/public/RestaurantsList";
@@ -40,44 +40,46 @@ const App = () => (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <CartProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <Routes>
-                {/* Landing & Public */}
-                <Route path="/" element={<LandingPage />} />
-                <Route path="/restaurantes" element={<RestaurantsList />} />
-                <Route path="/restaurante/:slug" element={<RestaurantPage />} />
-                <Route path="/termos" element={<TermsPage />} />
-                <Route path="/privacidade" element={<PrivacyPage />} />
-                
-                {/* Auth */}
-                <Route path="/login" element={<Auth />} />
-                <Route path="/auth" element={<Auth />} />
-                
-                {/* User */}
-                <Route path="/orders" element={<Orders />} />
-                <Route path="/profile" element={<Profile />} />
-                
-                {/* Admin/Lojista Panel */}
-                <Route path="/admin" element={<AdminLayout />}>
-                  <Route index element={<AdminDashboard />} />
-                  <Route path="orders" element={<AdminOrders />} />
-                  <Route path="products" element={<AdminProducts />} />
-                  <Route path="categories" element={<AdminCategories />} />
-                  <Route path="addons" element={<AdminAddons />} />
-                  <Route path="coupons" element={<AdminCoupons />} />
-                  <Route path="reports" element={<AdminReports />} />
-                  <Route path="users" element={<AdminUsers />} />
-                  <Route path="settings" element={<AdminSettings />} />
-                </Route>
-                
-                {/* Catch-all */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </BrowserRouter>
-          </TooltipProvider>
+          <MarketplaceCartProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <Routes>
+                  {/* Landing & Public */}
+                  <Route path="/" element={<LandingPage />} />
+                  <Route path="/restaurantes" element={<RestaurantsList />} />
+                  <Route path="/restaurante/:slug" element={<RestaurantPage />} />
+                  <Route path="/termos" element={<TermsPage />} />
+                  <Route path="/privacidade" element={<PrivacyPage />} />
+                  
+                  {/* Auth */}
+                  <Route path="/login" element={<Auth />} />
+                  <Route path="/auth" element={<Auth />} />
+                  
+                  {/* User */}
+                  <Route path="/orders" element={<Orders />} />
+                  <Route path="/profile" element={<Profile />} />
+                  
+                  {/* Admin/Lojista Panel */}
+                  <Route path="/admin" element={<AdminLayout />}>
+                    <Route index element={<AdminDashboard />} />
+                    <Route path="orders" element={<AdminOrders />} />
+                    <Route path="products" element={<AdminProducts />} />
+                    <Route path="categories" element={<AdminCategories />} />
+                    <Route path="addons" element={<AdminAddons />} />
+                    <Route path="coupons" element={<AdminCoupons />} />
+                    <Route path="reports" element={<AdminReports />} />
+                    <Route path="users" element={<AdminUsers />} />
+                    <Route path="settings" element={<AdminSettings />} />
+                  </Route>
+                  
+                  {/* Catch-all */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </BrowserRouter>
+            </TooltipProvider>
+          </MarketplaceCartProvider>
         </CartProvider>
       </AuthProvider>
     </QueryClientProvider>
