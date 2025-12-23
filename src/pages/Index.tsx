@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CartProvider, useCart } from '@/context/CartContext';
+import { useCart } from '@/context/CartContext';
 import { Header } from '@/components/Header';
 import { Hero } from '@/components/Hero';
 import { CategoryNav } from '@/components/CategoryNav';
@@ -61,12 +61,4 @@ const IndexContent = () => {
   );
 };
 
-const Index = () => {
-  return (
-    <CartProvider>
-      <IndexContent />
-    </CartProvider>
-  );
-};
-
-export default Index;
+export default IndexContent;
