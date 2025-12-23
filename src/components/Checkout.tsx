@@ -19,7 +19,9 @@ import {
   ChevronRight,
   Loader2,
   Plus,
-  Home
+  Home,
+  Truck,
+  Store
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -43,12 +45,23 @@ interface CheckoutProps {
 
 type PaymentMethod = 'pix' | 'card' | 'cash';
 
+// Endereço do estabelecimento para retirada
+const STORE_ADDRESS = {
+  street: 'Rua das Palmeiras',
+  number: '123',
+  neighborhood: 'Centro',
+  city: 'São Paulo',
+  state: 'SP',
+  formatted: 'Rua das Palmeiras, 123 - Centro, São Paulo/SP'
+};
+
 const Checkout = ({ onBack, onComplete }: CheckoutProps) => {
   const navigate = useNavigate();
   const { user, profile, refreshProfile } = useAuth();
   const { 
     items, 
-    deliveryMode, 
+    deliveryMode,
+    setDeliveryMode,
     subtotal, 
     deliveryFee, 
     couponDiscount, 
@@ -69,7 +82,8 @@ const Checkout = ({ onBack, onComplete }: CheckoutProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingAddresses, setIsLoadingAddresses] = useState(true);
 
-  const totalSteps = deliveryMode === 'delivery' ? 3 : 2;
+  // Passos: 1=Modo, 2=Endereço(se delivery), 3=Pagamento, 4=Confirmação
+  const totalSteps = deliveryMode === 'delivery' ? 4 : 3;
 
   useEffect(() => {
     if (deliveryMode === 'delivery') {
@@ -78,6 +92,14 @@ const Checkout = ({ onBack, onComplete }: CheckoutProps) => {
       setIsLoadingAddresses(false);
     }
   }, [deliveryMode]);
+
+  // Quando mudar o modo de entrega, resetar o passo de endereço se necessário
+  const handleDeliveryModeChange = (mode: 'delivery' | 'pickup') => {
+    setDeliveryMode(mode);
+    if (mode === 'delivery') {
+      fetchAddresses();
+    }
+  };
 
   const fetchAddresses = async () => {
     if (!user) return;
@@ -118,7 +140,8 @@ const Checkout = ({ onBack, onComplete }: CheckoutProps) => {
   };
 
   const handleNextStep = () => {
-    if (deliveryMode === 'delivery' && step === 1 && !selectedAddressId) {
+    // Validar seleção de endereço no passo 2 para delivery
+    if (deliveryMode === 'delivery' && step === 2 && !selectedAddressId) {
       toast({
         title: 'Selecione um endereço',
         description: 'Por favor, selecione um endereço de entrega.',
@@ -301,6 +324,65 @@ const Checkout = ({ onBack, onComplete }: CheckoutProps) => {
     </div>
   );
 
+  const renderDeliveryModeStep = () => (
+    <div className="space-y-4">
+      <h3 className="font-semibold text-lg flex items-center gap-2">
+        <Truck className="h-5 w-5 text-primary" />
+        Como deseja receber seu pedido?
+      </h3>
+
+      <RadioGroup
+        value={deliveryMode}
+        onValueChange={(value) => handleDeliveryModeChange(value as 'delivery' | 'pickup')}
+        className="space-y-3"
+      >
+        <div
+          className={cn(
+            'flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition-colors',
+            deliveryMode === 'delivery'
+              ? 'border-primary bg-primary/5'
+              : 'border-border hover:border-primary/50'
+          )}
+          onClick={() => handleDeliveryModeChange('delivery')}
+        >
+          <RadioGroupItem value="delivery" id="delivery" className="mt-1" />
+          <Truck className="h-5 w-5 text-primary mt-0.5" />
+          <div className="flex-1">
+            <span className="font-medium">Entrega</span>
+            <p className="text-sm text-muted-foreground mt-1">
+              Receba no seu endereço
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Taxa de entrega: <span className="font-medium">{deliveryFee > 0 ? formatPrice(deliveryFee) : 'Grátis!'}</span>
+            </p>
+          </div>
+        </div>
+
+        <div
+          className={cn(
+            'flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition-colors',
+            deliveryMode === 'pickup'
+              ? 'border-primary bg-primary/5'
+              : 'border-border hover:border-primary/50'
+          )}
+          onClick={() => handleDeliveryModeChange('pickup')}
+        >
+          <RadioGroupItem value="pickup" id="pickup" className="mt-1" />
+          <Store className="h-5 w-5 text-primary mt-0.5" />
+          <div className="flex-1">
+            <span className="font-medium">Retirar no local</span>
+            <p className="text-sm text-muted-foreground mt-1">
+              {STORE_ADDRESS.formatted}
+            </p>
+            <p className="text-xs text-green-600 mt-1 font-medium">
+              Sem taxa de entrega
+            </p>
+          </div>
+        </div>
+      </RadioGroup>
+    </div>
+  );
+
   const renderAddressStep = () => (
     <div className="space-y-4">
       <h3 className="font-semibold text-lg flex items-center gap-2">
@@ -478,12 +560,21 @@ const Checkout = ({ onBack, onComplete }: CheckoutProps) => {
 
         {/* Delivery */}
         <div className="space-y-2">
-          <h4 className="text-sm font-medium text-muted-foreground">Entrega</h4>
-          <p className="text-sm">
-            {deliveryMode === 'delivery' && selectedAddress
-              ? formatAddress(selectedAddress)
-              : 'Retirada no local'}
-          </p>
+          <h4 className="text-sm font-medium text-muted-foreground">
+            {deliveryMode === 'delivery' ? 'Endereço de Entrega' : 'Retirada'}
+          </h4>
+          <div className="flex items-start gap-2">
+            {deliveryMode === 'delivery' ? (
+              <Truck className="h-4 w-4 text-primary mt-0.5" />
+            ) : (
+              <Store className="h-4 w-4 text-primary mt-0.5" />
+            )}
+            <p className="text-sm">
+              {deliveryMode === 'delivery' && selectedAddress
+                ? formatAddress(selectedAddress)
+                : STORE_ADDRESS.formatted}
+            </p>
+          </div>
         </div>
 
         {/* Payment */}
@@ -542,20 +633,27 @@ const Checkout = ({ onBack, onComplete }: CheckoutProps) => {
   };
 
   const getCurrentStepContent = () => {
+    // Passo 1 é sempre a seleção de modo de entrega
+    if (step === 1) {
+      return renderDeliveryModeStep();
+    }
+
     if (deliveryMode === 'delivery') {
+      // Delivery: 1=Modo, 2=Endereço, 3=Pagamento, 4=Confirmação
       switch (step) {
-        case 1:
-          return renderAddressStep();
         case 2:
-          return renderPaymentStep();
+          return renderAddressStep();
         case 3:
+          return renderPaymentStep();
+        case 4:
           return renderConfirmationStep();
       }
     } else {
+      // Pickup: 1=Modo, 2=Pagamento, 3=Confirmação
       switch (step) {
-        case 1:
-          return renderPaymentStep();
         case 2:
+          return renderPaymentStep();
+        case 3:
           return renderConfirmationStep();
       }
     }
@@ -604,7 +702,7 @@ const Checkout = ({ onBack, onComplete }: CheckoutProps) => {
           <Button
             onClick={handleNextStep}
             className="flex-1"
-            disabled={deliveryMode === 'delivery' && step === 1 && addresses.length === 0}
+            disabled={deliveryMode === 'delivery' && step === 2 && addresses.length === 0}
           >
             Próximo
             <ChevronRight className="h-4 w-4 ml-1" />
