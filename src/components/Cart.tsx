@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X, Minus, Plus, Trash2, ShoppingBag, Truck, MapPin, CreditCard, Tag, Gift, Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import Checkout from '@/components/Checkout';
 import comboSalmao from '@/assets/combo-salmao.jpg';
 import comboExclusivo from '@/assets/combo-exclusivo.jpg';
 import temaki from '@/assets/temaki.jpg';
@@ -29,6 +31,7 @@ interface CartProps {
 }
 
 export const Cart = ({ isOpen, onClose }: CartProps) => {
+  const navigate = useNavigate();
   const {
     items,
     updateQuantity,
@@ -51,6 +54,7 @@ export const Cart = ({ isOpen, onClose }: CartProps) => {
   const { toast } = useToast();
   const [couponCode, setCouponCode] = useState('');
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -92,6 +96,29 @@ export const Cart = ({ isOpen, onClose }: CartProps) => {
 
   const availablePoints = profile?.points ?? 0;
 
+  const handleCheckoutClick = () => {
+    if (!user) {
+      toast({
+        title: 'Faça login para continuar',
+        description: 'Você precisa estar logado para finalizar o pedido.',
+        variant: 'destructive',
+      });
+      navigate('/auth');
+      onClose();
+      return;
+    }
+    setIsCheckingOut(true);
+  };
+
+  const handleCheckoutComplete = () => {
+    setIsCheckingOut(false);
+    onClose();
+  };
+
+  const handleCheckoutBack = () => {
+    setIsCheckingOut(false);
+  };
+
   return (
     <>
       {/* Overlay */}
@@ -114,7 +141,9 @@ export const Cart = ({ isOpen, onClose }: CartProps) => {
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-2">
             <ShoppingBag className="h-5 w-5 text-primary" />
-            <h2 className="font-serif text-xl font-semibold">Meu Carrinho</h2>
+            <h2 className="font-serif text-xl font-semibold">
+              {isCheckingOut ? 'Finalizar Pedido' : 'Meu Carrinho'}
+            </h2>
           </div>
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="h-5 w-5" />
@@ -123,7 +152,11 @@ export const Cart = ({ isOpen, onClose }: CartProps) => {
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
-          {items.length === 0 ? (
+          {isCheckingOut ? (
+            <div className="p-4 h-full">
+              <Checkout onBack={handleCheckoutBack} onComplete={handleCheckoutComplete} />
+            </div>
+          ) : items.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full p-8 text-center">
               <ShoppingBag className="h-16 w-16 text-muted-foreground/30 mb-4" />
               <h3 className="font-serif text-lg font-semibold text-foreground mb-2">
@@ -322,7 +355,7 @@ export const Cart = ({ isOpen, onClose }: CartProps) => {
         </div>
 
         {/* Footer */}
-        {items.length > 0 && (
+        {items.length > 0 && !isCheckingOut && (
           <div className="border-t border-border p-4 space-y-4">
             {/* Summary */}
             <div className="space-y-2">
@@ -360,7 +393,10 @@ export const Cart = ({ isOpen, onClose }: CartProps) => {
             </div>
 
             {/* Checkout Button */}
-            <Button className="w-full h-12 text-base bg-primary text-primary-foreground hover:bg-primary/90 glow-primary">
+            <Button 
+              onClick={handleCheckoutClick}
+              className="w-full h-12 text-base bg-primary text-primary-foreground hover:bg-primary/90 glow-primary"
+            >
               <CreditCard className="h-5 w-5 mr-2" />
               Finalizar Pedido
             </Button>
