@@ -35,7 +35,12 @@ import ClientAddressesPage from "./pages/painel/cliente/ClientAddressesPage";
 import ClientPointsPage from "./pages/painel/cliente/ClientPointsPage";
 import ClientProfilePage from "./pages/painel/cliente/ClientProfilePage";
 import RestaurantPanelRedirect from "./pages/painel/restaurante/RestaurantPanelRedirect";
-import SuperAdminPanelRedirect from "./pages/painel/superadmin/SuperAdminPanelRedirect";
+import SuperAdminLayout from "./pages/painel/superadmin/SuperAdminLayout";
+import SuperAdminDashboard from "./pages/painel/superadmin/SuperAdminDashboard";
+import SuperAdminRestaurants from "./pages/painel/superadmin/SuperAdminRestaurants";
+import SuperAdminUsers from "./pages/painel/superadmin/SuperAdminUsers";
+import SuperAdminSettings from "./pages/painel/superadmin/SuperAdminSettings";
+import SuperAdminAudit from "./pages/painel/superadmin/SuperAdminAudit";
 
 // Admin Pages (legacy - being migrated to panels)
 import AdminLayout from "./pages/admin/AdminLayout";
@@ -99,7 +104,13 @@ const App = () => (
                     <Route path="perfil" element={<ClientProfilePage />} />
                   </Route>
                   <Route path="/painel/restaurante" element={<RestaurantPanelRedirect />} />
-                  <Route path="/painel/superadmin" element={<SuperAdminPanelRedirect />} />
+                  <Route path="/painel/superadmin" element={<SuperAdminLayout />}>
+                    <Route index element={<SuperAdminDashboard />} />
+                    <Route path="restaurantes" element={<SuperAdminRestaurants />} />
+                    <Route path="usuarios" element={<SuperAdminUsers />} />
+                    <Route path="configuracoes" element={<SuperAdminSettings />} />
+                    <Route path="auditoria" element={<SuperAdminAudit />} />
+                  </Route>
                   
                   {/* Admin/Lojista Panel (legacy) */}
                   <Route path="/admin" element={<AdminLayout />}>
