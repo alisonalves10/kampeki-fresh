@@ -58,6 +58,32 @@ const defaultBranding: Omit<TenantBranding, 'id' | 'restaurant_id'> = {
 
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
 
+// Convert hex to HSL values for CSS variables
+const hexToHsl = (hex: string): string | null => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!result) return null;
+  
+  let r = parseInt(result[1], 16) / 255;
+  let g = parseInt(result[2], 16) / 255;
+  let b = parseInt(result[3], 16) / 255;
+  
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0, s = 0, l = (max + min) / 2;
+  
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+      case g: h = ((b - r) / d + 2) / 6; break;
+      case b: h = ((r - g) / d + 4) / 6; break;
+    }
+  }
+  
+  return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+};
+
 export const TenantProvider = ({ children, initialSlug }: { children: ReactNode; initialSlug?: string }) => {
   const [slug, setSlug] = useState<string | null>(initialSlug || null);
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
@@ -76,7 +102,7 @@ export const TenantProvider = ({ children, initialSlug }: { children: ReactNode;
       setError(null);
 
       try {
-        // Fetch restaurant - use select('*') and cast to avoid type issues with new columns
+        // Fetch restaurant with explicit columns
         const { data: restaurantData, error: restaurantError } = await supabase
           .from('restaurants')
           .select('*')
@@ -111,11 +137,12 @@ export const TenantProvider = ({ children, initialSlug }: { children: ReactNode;
         if (brandingData) {
           setBranding(brandingData as unknown as TenantBranding);
         } else {
-          // Use default branding
+          // Use default branding with restaurant name
           setBranding({
             id: 'default',
             restaurant_id: typedRestaurant.id,
             ...defaultBranding,
+            header_title: typedRestaurant.name,
           });
         }
       } catch (err) {
@@ -129,37 +156,15 @@ export const TenantProvider = ({ children, initialSlug }: { children: ReactNode;
     fetchTenant();
   }, [slug]);
 
-  // Apply CSS variables when branding changes
+  // Apply CSS variables and theming when branding changes
   useEffect(() => {
+    const root = document.documentElement;
+    
     if (branding) {
-      const root = document.documentElement;
+      // Add tenant-themed class to enable CSS variable overrides
+      root.classList.add('tenant-themed');
       
-      // Convert hex to HSL for CSS variables
-      const hexToHsl = (hex: string) => {
-        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        if (!result) return null;
-        
-        let r = parseInt(result[1], 16) / 255;
-        let g = parseInt(result[2], 16) / 255;
-        let b = parseInt(result[3], 16) / 255;
-        
-        const max = Math.max(r, g, b);
-        const min = Math.min(r, g, b);
-        let h = 0, s = 0, l = (max + min) / 2;
-        
-        if (max !== min) {
-          const d = max - min;
-          s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-          switch (max) {
-            case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
-            case g: h = ((b - r) / d + 2) / 6; break;
-            case b: h = ((r - g) / d + 4) / 6; break;
-          }
-        }
-        
-        return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
-      };
-
+      // Convert hex colors to HSL
       const primaryHsl = hexToHsl(branding.primary_color);
       const secondaryHsl = hexToHsl(branding.secondary_color);
 
@@ -170,23 +175,36 @@ export const TenantProvider = ({ children, initialSlug }: { children: ReactNode;
         root.style.setProperty('--tenant-secondary', secondaryHsl);
       }
 
-      // Update favicon
+      // Update page title
+      if (restaurant) {
+        document.title = `${restaurant.name} - Delivery2U`;
+      }
+
+      // Update favicon dynamically
       if (branding.favicon_url) {
-        const link = document.querySelector("link[rel*='icon']") as HTMLLinkElement || document.createElement('link');
-        link.type = 'image/x-icon';
-        link.rel = 'shortcut icon';
+        let link = document.querySelector("link[rel*='icon']") as HTMLLinkElement;
+        if (!link) {
+          link = document.createElement('link');
+          link.rel = 'icon';
+          document.head.appendChild(link);
+        }
         link.href = branding.favicon_url;
-        document.head.appendChild(link);
       }
     }
 
     // Cleanup on unmount
     return () => {
-      const root = document.documentElement;
+      root.classList.remove('tenant-themed');
       root.style.removeProperty('--tenant-primary');
       root.style.removeProperty('--tenant-secondary');
+      
+      // Restore default favicon
+      const link = document.querySelector("link[rel*='icon']") as HTMLLinkElement;
+      if (link) {
+        link.href = '/favicon.ico';
+      }
     };
-  }, [branding]);
+  }, [branding, restaurant]);
 
   return (
     <TenantContext.Provider value={{
