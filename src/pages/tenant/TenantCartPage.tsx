@@ -55,24 +55,24 @@ export default function TenantCartPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           {items.map((item) => (
-            <div key={item.id} className="flex items-center gap-4">
-              {item.image_url && (
+            <div key={item.cartItemId} className="flex items-center gap-4">
+              {item.product.image_url && (
                 <img 
-                  src={item.image_url} 
-                  alt={item.name}
+                  src={item.product.image_url} 
+                  alt={item.product.name}
                   className="h-16 w-16 rounded-lg object-cover"
                 />
               )}
               <div className="flex-1 min-w-0">
-                <h3 className="font-medium text-foreground truncate">{item.name}</h3>
-                <p className="text-sm text-muted-foreground">{formatPrice(item.price)}</p>
+                <h3 className="font-medium text-foreground truncate">{item.product.name}</h3>
+                <p className="text-sm text-muted-foreground">{formatPrice(item.product.price)}</p>
               </div>
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="icon"
                   className="h-8 w-8"
-                  onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                  onClick={() => updateQuantity(item.cartItemId, item.quantity - 1)}
                 >
                   <Minus className="h-3 w-3" />
                 </Button>
@@ -81,7 +81,7 @@ export default function TenantCartPage() {
                   variant="outline"
                   size="icon"
                   className="h-8 w-8"
-                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                  onClick={() => updateQuantity(item.cartItemId, item.quantity + 1)}
                 >
                   <Plus className="h-3 w-3" />
                 </Button>
@@ -90,7 +90,7 @@ export default function TenantCartPage() {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 text-destructive"
-                onClick={() => removeItem(item.id)}
+                onClick={() => removeItem(item.cartItemId)}
               >
                 <Trash2 className="h-4 w-4" />
               </Button>

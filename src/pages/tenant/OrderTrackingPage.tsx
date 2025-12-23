@@ -28,7 +28,7 @@ interface Order {
   payment_method: string | null;
   notes: string | null;
   created_at: string;
-  restaurant_id: string | null;
+  restaurant_id?: string | null;
 }
 
 interface Restaurant {
@@ -78,7 +78,10 @@ export default function OrderTrackingPage() {
           .single();
 
         if (orderError) throw orderError;
-        setOrder(orderData as Order);
+        
+        // Cast to Order type - restaurant_id may not exist in old types
+        const typedOrder = orderData as unknown as Order;
+        setOrder(typedOrder);
 
         // Fetch order items
         const { data: itemsData, error: itemsError } = await supabase
@@ -90,11 +93,12 @@ export default function OrderTrackingPage() {
         setItems(itemsData || []);
 
         // Fetch restaurant if available
-        if (orderData.restaurant_id) {
+        const restaurantId = (orderData as any).restaurant_id;
+        if (restaurantId) {
           const { data: restaurantData } = await supabase
             .from('restaurants')
             .select('id, name, slug, phone')
-            .eq('id', orderData.restaurant_id)
+            .eq('id', restaurantId)
             .single();
 
           if (restaurantData) {
@@ -122,7 +126,7 @@ export default function OrderTrackingPage() {
           filter: `id=eq.${id}`,
         },
         (payload) => {
-          setOrder(prev => prev ? { ...prev, ...payload.new } : null);
+          setOrder(prev => prev ? { ...prev, ...payload.new } as Order : null);
         }
       )
       .subscribe();
