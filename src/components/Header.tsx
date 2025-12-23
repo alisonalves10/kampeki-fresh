@@ -7,7 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
 
 interface HeaderProps {
-  onCartClick: () => void;
+  onCartClick?: () => void;
 }
 
 export const Header = ({ onCartClick }: HeaderProps) => {
@@ -62,15 +62,26 @@ export const Header = ({ onCartClick }: HeaderProps) => {
 
             {/* Orders - Desktop (only when logged in) */}
             {user && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="hidden lg:flex items-center gap-2 text-muted-foreground hover:text-foreground"
-                onClick={() => navigate('/orders')}
-              >
-                <Package className="h-4 w-4" />
-                <span className="text-sm">Pedidos</span>
-              </Button>
+              <>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="hidden lg:flex items-center gap-2 text-muted-foreground hover:text-foreground"
+                  onClick={() => navigate('/orders')}
+                >
+                  <Package className="h-4 w-4" />
+                  <span className="text-sm">Pedidos</span>
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="hidden lg:flex items-center gap-2 text-muted-foreground hover:text-foreground"
+                  onClick={() => navigate('/profile')}
+                >
+                  <User className="h-4 w-4" />
+                  <span className="text-sm">Minha Conta</span>
+                </Button>
+              </>
             )}
 
             {/* Login/User */}
@@ -101,20 +112,22 @@ export const Header = ({ onCartClick }: HeaderProps) => {
             )}
 
             {/* Cart Button */}
-            <Button
-              onClick={onCartClick}
-              variant="default"
-              size="sm"
-              className="relative flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
-            >
-              <ShoppingCart className="h-4 w-4" />
-              {totalItems > 0 && (
-                <span className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-accent text-accent-foreground text-xs flex items-center justify-center font-medium animate-scale-in">
-                  {totalItems}
-                </span>
-              )}
-              <span className="hidden sm:inline">Carrinho</span>
-            </Button>
+            {onCartClick && (
+              <Button
+                onClick={onCartClick}
+                variant="default"
+                size="sm"
+                className="relative flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                <ShoppingCart className="h-4 w-4" />
+                {totalItems > 0 && (
+                  <span className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-accent text-accent-foreground text-xs flex items-center justify-center font-medium animate-scale-in">
+                    {totalItems}
+                  </span>
+                )}
+                <span className="hidden sm:inline">Carrinho</span>
+              </Button>
+            )}
 
             {/* Mobile Menu Toggle */}
             <Button
@@ -220,18 +233,32 @@ export const Header = ({ onCartClick }: HeaderProps) => {
                 </Button>
               </div>
               {user && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="flex items-center gap-2 justify-start"
-                  onClick={() => {
-                    navigate('/orders');
-                    setIsMobileMenuOpen(false);
-                  }}
-                >
-                  <Package className="h-4 w-4" />
-                  <span>Meus Pedidos</span>
-                </Button>
+                <>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="flex items-center gap-2 justify-start"
+                    onClick={() => {
+                      navigate('/orders');
+                      setIsMobileMenuOpen(false);
+                    }}
+                  >
+                    <Package className="h-4 w-4" />
+                    <span>Meus Pedidos</span>
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="flex items-center gap-2 justify-start"
+                    onClick={() => {
+                      navigate('/profile');
+                      setIsMobileMenuOpen(false);
+                    }}
+                  >
+                    <User className="h-4 w-4" />
+                    <span>Minha Conta</span>
+                  </Button>
+                </>
               )}
             </div>
           </div>
