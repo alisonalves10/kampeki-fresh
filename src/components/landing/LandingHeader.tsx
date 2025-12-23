@@ -90,8 +90,8 @@ export function LandingHeader() {
             >
               {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </Button>
-            <Button variant="ghost" onClick={() => navigate("/login")}>
-              Entrar
+            <Button variant="ghost" asChild>
+              <Link to="/login">Entrar</Link>
             </Button>
             <Button onClick={() => handleNavClick("#lead-form")} className="glow-primary">
               Quero vender com a Delivery2U
@@ -140,12 +140,10 @@ export function LandingHeader() {
               <Button
                 variant="outline"
                 className="w-full"
-                onClick={() => {
-                  setIsMobileMenuOpen(false);
-                  navigate("/login");
-                }}
+                asChild
+                onClick={() => setIsMobileMenuOpen(false)}
               >
-                Entrar
+                <Link to="/login">Entrar</Link>
               </Button>
               <Button
                 className="w-full glow-primary"
