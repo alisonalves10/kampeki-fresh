@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingCart, User, MapPin, Clock, Gift, Menu, X, Search, LogOut } from 'lucide-react';
+import { ShoppingCart, User, MapPin, Clock, Gift, Menu, X, Search, LogOut, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
@@ -59,6 +59,19 @@ export const Header = ({ onCartClick }: HeaderProps) => {
               <Gift className="h-4 w-4 text-primary" />
               <span className="text-sm">{profile?.points ?? 0} pts</span>
             </Button>
+
+            {/* Orders - Desktop (only when logged in) */}
+            {user && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="hidden lg:flex items-center gap-2 text-muted-foreground hover:text-foreground"
+                onClick={() => navigate('/orders')}
+              >
+                <Package className="h-4 w-4" />
+                <span className="text-sm">Pedidos</span>
+              </Button>
+            )}
 
             {/* Login/User */}
             <Button 
@@ -181,29 +194,45 @@ export const Header = ({ onCartClick }: HeaderProps) => {
             </div>
 
             {/* Mobile Actions */}
-            <div className="flex items-center justify-between">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="flex items-center gap-2"
-                onClick={handleAuthClick}
-              >
-                {user ? (
-                  <>
-                    <LogOut className="h-4 w-4" />
-                    <span>Sair ({profile?.name?.split(' ')[0] ?? 'Usuário'})</span>
-                  </>
-                ) : (
-                  <>
-                    <User className="h-4 w-4" />
-                    <span>Entrar / Cadastrar</span>
-                  </>
-                )}
-              </Button>
-              <Button variant="ghost" size="sm" className="flex items-center gap-2 text-primary">
-                <Gift className="h-4 w-4" />
-                <span>{profile?.points ?? 0} pontos</span>
-              </Button>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="flex items-center gap-2"
+                  onClick={handleAuthClick}
+                >
+                  {user ? (
+                    <>
+                      <LogOut className="h-4 w-4" />
+                      <span>Sair ({profile?.name?.split(' ')[0] ?? 'Usuário'})</span>
+                    </>
+                  ) : (
+                    <>
+                      <User className="h-4 w-4" />
+                      <span>Entrar / Cadastrar</span>
+                    </>
+                  )}
+                </Button>
+                <Button variant="ghost" size="sm" className="flex items-center gap-2 text-primary">
+                  <Gift className="h-4 w-4" />
+                  <span>{profile?.points ?? 0} pontos</span>
+                </Button>
+              </div>
+              {user && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="flex items-center gap-2 justify-start"
+                  onClick={() => {
+                    navigate('/orders');
+                    setIsMobileMenuOpen(false);
+                  }}
+                >
+                  <Package className="h-4 w-4" />
+                  <span>Meus Pedidos</span>
+                </Button>
+              )}
             </div>
           </div>
         </div>
