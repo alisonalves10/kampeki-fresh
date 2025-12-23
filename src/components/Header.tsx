@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { ShoppingCart, User, MapPin, Clock, Gift, Menu, X, Search } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ShoppingCart, User, MapPin, Clock, Gift, Menu, X, Search, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/context/CartContext';
+import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
 
 interface HeaderProps {
@@ -10,7 +12,17 @@ interface HeaderProps {
 
 export const Header = ({ onCartClick }: HeaderProps) => {
   const { totalItems, deliveryMode, setDeliveryMode } = useCart();
+  const { user, profile, signOut } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const navigate = useNavigate();
+
+  const handleAuthClick = () => {
+    if (user) {
+      signOut();
+    } else {
+      navigate('/auth');
+    }
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full">
@@ -18,7 +30,7 @@ export const Header = ({ onCartClick }: HeaderProps) => {
       <div className="bg-background/95 backdrop-blur-md border-b border-border">
         <div className="container flex h-16 items-center justify-between">
           {/* Logo */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
             <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center glow-primary">
               <span className="text-primary-foreground font-serif font-bold text-lg">K</span>
             </div>
@@ -45,14 +57,35 @@ export const Header = ({ onCartClick }: HeaderProps) => {
             {/* Points - Desktop */}
             <Button variant="ghost" size="sm" className="hidden lg:flex items-center gap-2 text-muted-foreground hover:text-foreground">
               <Gift className="h-4 w-4 text-primary" />
-              <span className="text-sm">0 pts</span>
+              <span className="text-sm">{profile?.points ?? 0} pts</span>
             </Button>
 
-            {/* Login */}
-            <Button variant="ghost" size="sm" className="hidden sm:flex items-center gap-2">
-              <User className="h-4 w-4" />
-              <span className="hidden md:inline">Entrar</span>
+            {/* Login/User */}
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="hidden sm:flex items-center gap-2"
+              onClick={handleAuthClick}
+            >
+              {user ? (
+                <>
+                  <LogOut className="h-4 w-4" />
+                  <span className="hidden md:inline">Sair</span>
+                </>
+              ) : (
+                <>
+                  <User className="h-4 w-4" />
+                  <span className="hidden md:inline">Entrar</span>
+                </>
+              )}
             </Button>
+
+            {/* User Name Badge - when logged in */}
+            {user && profile?.name && (
+              <span className="hidden lg:inline text-sm text-muted-foreground">
+                Olá, <span className="text-foreground font-medium">{profile.name.split(' ')[0]}</span>
+              </span>
+            )}
 
             {/* Cart Button */}
             <Button
@@ -149,13 +182,27 @@ export const Header = ({ onCartClick }: HeaderProps) => {
 
             {/* Mobile Actions */}
             <div className="flex items-center justify-between">
-              <Button variant="ghost" size="sm" className="flex items-center gap-2">
-                <User className="h-4 w-4" />
-                <span>Entrar / Cadastrar</span>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="flex items-center gap-2"
+                onClick={handleAuthClick}
+              >
+                {user ? (
+                  <>
+                    <LogOut className="h-4 w-4" />
+                    <span>Sair ({profile?.name?.split(' ')[0] ?? 'Usuário'})</span>
+                  </>
+                ) : (
+                  <>
+                    <User className="h-4 w-4" />
+                    <span>Entrar / Cadastrar</span>
+                  </>
+                )}
               </Button>
               <Button variant="ghost" size="sm" className="flex items-center gap-2 text-primary">
                 <Gift className="h-4 w-4" />
-                <span>0 pontos</span>
+                <span>{profile?.points ?? 0} pontos</span>
               </Button>
             </div>
           </div>
