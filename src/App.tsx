@@ -40,6 +40,7 @@ import RestaurantOrders from "./pages/painel/restaurante/RestaurantOrders";
 import RestaurantProducts from "./pages/painel/restaurante/RestaurantProducts";
 import RestaurantReports from "./pages/painel/restaurante/RestaurantReports";
 import RestaurantSettings from "./pages/painel/restaurante/RestaurantSettings";
+import SuperAdminLayout from "./pages/painel/superadmin/SuperAdminLayout";
 import SuperAdminDashboard from "./pages/painel/superadmin/SuperAdminDashboard";
 import SuperAdminRestaurants from "./pages/painel/superadmin/SuperAdminRestaurants";
 import SuperAdminUsers from "./pages/painel/superadmin/SuperAdminUsers";
@@ -107,7 +108,13 @@ const App = () => (
                     <Route path="pontos" element={<ClientPointsPage />} />
                     <Route path="perfil" element={<ClientProfilePage />} />
                   </Route>
-                  <Route path="/painel/restaurante" element={<RestaurantPanelRedirect />} />
+                  <Route path="/painel/restaurante" element={<RestaurantPanelLayout />}>
+                    <Route index element={<RestaurantDashboard />} />
+                    <Route path="pedidos" element={<RestaurantOrders />} />
+                    <Route path="produtos" element={<RestaurantProducts />} />
+                    <Route path="relatorios" element={<RestaurantReports />} />
+                    <Route path="configuracoes" element={<RestaurantSettings />} />
+                  </Route>
                   <Route path="/painel/superadmin" element={<SuperAdminLayout />}>
                     <Route index element={<SuperAdminDashboard />} />
                     <Route path="restaurantes" element={<SuperAdminRestaurants />} />
