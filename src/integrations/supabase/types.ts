@@ -24,6 +24,7 @@ export type Database = {
           max_selections: number | null
           min_selections: number | null
           name: string
+          restaurant_id: string | null
           sort_order: number | null
           updated_at: string
         }
@@ -36,6 +37,7 @@ export type Database = {
           max_selections?: number | null
           min_selections?: number | null
           name: string
+          restaurant_id?: string | null
           sort_order?: number | null
           updated_at?: string
         }
@@ -48,10 +50,19 @@ export type Database = {
           max_selections?: number | null
           min_selections?: number | null
           name?: string
+          restaurant_id?: string | null
           sort_order?: number | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "addon_groups_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       addon_options: {
         Row: {
@@ -188,6 +199,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           name: string
+          restaurant_id: string | null
           sort_order: number | null
           updated_at: string
         }
@@ -197,6 +209,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           name: string
+          restaurant_id?: string | null
           sort_order?: number | null
           updated_at?: string
         }
@@ -206,10 +219,19 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           name?: string
+          restaurant_id?: string | null
           sort_order?: number | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "categories_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       coupons: {
         Row: {
@@ -223,6 +245,8 @@ export type Database = {
           is_active: boolean
           max_uses: number | null
           min_order_value: number | null
+          restaurant_id: string | null
+          starts_at: string | null
         }
         Insert: {
           code: string
@@ -235,6 +259,8 @@ export type Database = {
           is_active?: boolean
           max_uses?: number | null
           min_order_value?: number | null
+          restaurant_id?: string | null
+          starts_at?: string | null
         }
         Update: {
           code?: string
@@ -247,8 +273,18 @@ export type Database = {
           is_active?: boolean
           max_uses?: number | null
           min_order_value?: number | null
+          restaurant_id?: string | null
+          starts_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "coupons_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       db_products: {
         Row: {
@@ -741,6 +777,68 @@ export type Database = {
           value?: Json
         }
         Relationships: []
+      }
+      tenant_branding: {
+        Row: {
+          background_color: string | null
+          created_at: string
+          favicon_url: string | null
+          header_image_url: string | null
+          header_subtitle: string | null
+          header_title: string | null
+          id: string
+          logo_url: string | null
+          primary_color: string | null
+          restaurant_id: string
+          secondary_color: string | null
+          subdomain: string | null
+          subdomain_enabled: boolean | null
+          text_color: string | null
+          updated_at: string
+        }
+        Insert: {
+          background_color?: string | null
+          created_at?: string
+          favicon_url?: string | null
+          header_image_url?: string | null
+          header_subtitle?: string | null
+          header_title?: string | null
+          id?: string
+          logo_url?: string | null
+          primary_color?: string | null
+          restaurant_id: string
+          secondary_color?: string | null
+          subdomain?: string | null
+          subdomain_enabled?: boolean | null
+          text_color?: string | null
+          updated_at?: string
+        }
+        Update: {
+          background_color?: string | null
+          created_at?: string
+          favicon_url?: string | null
+          header_image_url?: string | null
+          header_subtitle?: string | null
+          header_title?: string | null
+          id?: string
+          logo_url?: string | null
+          primary_color?: string | null
+          restaurant_id?: string
+          secondary_color?: string | null
+          subdomain?: string | null
+          subdomain_enabled?: boolean | null
+          text_color?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_branding_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: true
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
