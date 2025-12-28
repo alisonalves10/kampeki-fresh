@@ -56,9 +56,9 @@ export default {
           foreground: "hsl(var(--success-foreground))",
         },
         // Delivery2U specific colors
-        "d2u-teal": {
-          DEFAULT: "hsl(var(--d2u-teal))",
-          light: "hsl(var(--d2u-teal-light))",
+        "d2u-yellow": {
+          DEFAULT: "hsl(var(--d2u-yellow))",
+          light: "hsl(var(--d2u-yellow-light))",
         },
         "d2u-orange": {
           DEFAULT: "hsl(var(--d2u-orange))",
@@ -129,7 +129,7 @@ export default {
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-        'gradient-teal': 'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--d2u-teal-light)) 100%)',
+        'gradient-yellow': 'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--d2u-yellow-light)) 100%)',
         'gradient-orange': 'linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(var(--d2u-orange-light)) 100%)',
         'gradient-hero': 'linear-gradient(135deg, hsl(var(--primary) / 0.1) 0%, hsl(var(--accent) / 0.1) 100%)',
       },
