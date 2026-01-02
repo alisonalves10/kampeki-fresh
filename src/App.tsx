@@ -38,6 +38,10 @@ import RestaurantPanelLayout from "./pages/painel/restaurante/RestaurantPanelLay
 import RestaurantDashboard from "./pages/painel/restaurante/RestaurantDashboard";
 import RestaurantOrders from "./pages/painel/restaurante/RestaurantOrders";
 import RestaurantProducts from "./pages/painel/restaurante/RestaurantProducts";
+import RestaurantCategories from "./pages/painel/restaurante/RestaurantCategories";
+import RestaurantAddons from "./pages/painel/restaurante/RestaurantAddons";
+import RestaurantCoupons from "./pages/painel/restaurante/RestaurantCoupons";
+import RestaurantBranding from "./pages/painel/restaurante/RestaurantBranding";
 import RestaurantReports from "./pages/painel/restaurante/RestaurantReports";
 import RestaurantSettings from "./pages/painel/restaurante/RestaurantSettings";
 import SuperAdminLayout from "./pages/painel/superadmin/SuperAdminLayout";
@@ -112,6 +116,10 @@ const App = () => (
                     <Route index element={<RestaurantDashboard />} />
                     <Route path="pedidos" element={<RestaurantOrders />} />
                     <Route path="produtos" element={<RestaurantProducts />} />
+                    <Route path="categorias" element={<RestaurantCategories />} />
+                    <Route path="complementos" element={<RestaurantAddons />} />
+                    <Route path="cupons" element={<RestaurantCoupons />} />
+                    <Route path="personalizacao" element={<RestaurantBranding />} />
                     <Route path="relatorios" element={<RestaurantReports />} />
                     <Route path="configuracoes" element={<RestaurantSettings />} />
                   </Route>

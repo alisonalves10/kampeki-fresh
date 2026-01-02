@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { z } from 'zod';
 
 const loginSchema = z.object({
@@ -37,9 +38,31 @@ export default function Auth() {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (user) {
-      navigate('/restaurantes');
-    }
+    const redirectByRole = async () => {
+      if (!user) return;
+      
+      try {
+        const { data } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        const role = data?.role;
+        if (role === 'admin') {
+          navigate('/painel/superadmin');
+        } else if (role === 'lojista') {
+          navigate('/painel/restaurante');
+        } else {
+          navigate('/restaurantes');
+        }
+      } catch (error) {
+        console.error('Error fetching user role:', error);
+        navigate('/restaurantes');
+      }
+    };
+
+    redirectByRole();
   }, [user, navigate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -124,7 +147,7 @@ export default function Auth() {
         } else {
           toast({
             title: "Conta criada!",
-            description: "Seja bem-vindo ao Kampeki Sushi!"
+            description: "Seja bem-vindo ao Delivery2U!"
           });
         }
       }
@@ -162,7 +185,7 @@ export default function Auth() {
             {/* Logo */}
             <div className="text-center space-y-4">
               <div className="mx-auto h-16 w-16 rounded-full bg-primary flex items-center justify-center glow-primary">
-                <span className="text-primary-foreground font-serif font-bold text-2xl">K</span>
+                <span className="text-primary-foreground font-serif font-bold text-2xl">D</span>
               </div>
               <div>
                 <h1 className="font-serif text-3xl font-semibold text-foreground">
@@ -320,27 +343,27 @@ export default function Auth() {
             </div>
             <div>
               <h2 className="font-serif text-4xl font-semibold text-foreground mb-4">
-                Kampeki Sushi
+                Delivery2U
               </h2>
               <p className="text-lg text-muted-foreground">
-                A perfeição da culinária japonesa em cada peça.
-                Ingredientes selecionados, preparo artesanal.
+                A plataforma completa para delivery.
+                Simples, rápida e eficiente.
               </p>
             </div>
             <div className="flex items-center justify-center gap-8 text-sm text-muted-foreground">
               <div className="text-center">
-                <div className="text-2xl font-serif text-primary">10+</div>
-                <div>Anos de tradição</div>
+                <div className="text-2xl font-serif text-primary">100+</div>
+                <div>Restaurantes</div>
               </div>
               <div className="h-8 w-px bg-border" />
               <div className="text-center">
                 <div className="text-2xl font-serif text-primary">50k+</div>
-                <div>Clientes felizes</div>
+                <div>Pedidos entregues</div>
               </div>
               <div className="h-8 w-px bg-border" />
               <div className="text-center">
-                <div className="text-2xl font-serif text-primary">100%</div>
-                <div>Ingredientes frescos</div>
+                <div className="text-2xl font-serif text-primary">99%</div>
+                <div>Satisfação</div>
               </div>
             </div>
           </div>
