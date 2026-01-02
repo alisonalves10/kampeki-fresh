@@ -33,37 +33,13 @@ export default function Auth() {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const { signIn, signUp, user } = useAuth();
+  const { signIn, signUp, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [justSignedUp, setJustSignedUp] = useState(false);
+  const [isHandlingAuth, setIsHandlingAuth] = useState(false);
 
-  useEffect(() => {
-    const redirectByRole = async () => {
-      if (!user) return;
-      
-      try {
-        const { data } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .maybeSingle();
-        
-        const role = data?.role;
-        if (role === 'admin') {
-          navigate('/painel/superadmin');
-        } else if (role === 'lojista') {
-          navigate('/painel/restaurante');
-        } else {
-          navigate('/restaurantes');
-        }
-      } catch (error) {
-        console.error('Error fetching user role:', error);
-        navigate('/restaurantes');
-      }
-    };
-
-    redirectByRole();
-  }, [user, navigate]);
+  // Removed automatic redirect - users should stay on auth page unless they explicitly login/signup
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -78,6 +54,7 @@ export default function Auth() {
     e.preventDefault();
     setErrors({});
     setIsSubmitting(true);
+    setIsHandlingAuth(true);
 
     try {
       if (isLogin) {
@@ -109,11 +86,35 @@ export default function Auth() {
               variant: "destructive"
             });
           }
+          setIsHandlingAuth(false);
         } else {
+          setJustSignedUp(false);
+          setIsHandlingAuth(false);
           toast({
             title: "Bem-vindo de volta!",
             description: "Login realizado com sucesso"
           });
+          
+          // Redirect after successful login
+          setTimeout(async () => {
+            const { data: { user: currentUser } } = await supabase.auth.getUser();
+            if (!currentUser) return;
+            
+            const { data } = await supabase
+              .from('user_roles')
+              .select('role')
+              .eq('user_id', currentUser.id)
+              .maybeSingle();
+            
+            const role = data?.role;
+            if (role === 'admin') {
+              navigate('/painel/superadmin');
+            } else if (role === 'lojista') {
+              navigate('/painel/restaurante');
+            } else {
+              navigate('/restaurantes');
+            }
+          }, 500);
         }
       } else {
         const result = signupSchema.safeParse(formData);
@@ -145,10 +146,62 @@ export default function Auth() {
             });
           }
         } else {
+          setJustSignedUp(true);
+          setIsHandlingAuth(false);
           toast({
             title: "Conta criada!",
-            description: "Seja bem-vindo ao Delivery2U!"
+            description: "Redirecionando para o painel..."
           });
+          
+          // Wait for user to be set and role to be created, then redirect
+          setTimeout(async () => {
+            // Get current user from auth
+            const { data: { user: currentUser } } = await supabase.auth.getUser();
+            if (!currentUser) {
+              console.error('No user found after signup');
+              return;
+            }
+            
+            // Wait a bit for the trigger to create the role and profile
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            
+            // Try multiple times in case the trigger hasn't run yet
+            let role = null;
+            let attempts = 0;
+            const maxAttempts = 10;
+            
+            while (!role && attempts < maxAttempts) {
+              const { data, error: roleError } = await supabase
+                .from('user_roles')
+                .select('role')
+                .eq('user_id', currentUser.id)
+                .maybeSingle();
+              
+              if (!roleError && data) {
+                role = data.role;
+                console.log('Role found after signup:', role);
+                break;
+              }
+              
+              attempts++;
+              if (attempts < maxAttempts) {
+                await new Promise(resolve => setTimeout(resolve, 500));
+              }
+            }
+            
+            // Redirect based on role (default to lojista panel for new users)
+            if (role === 'admin') {
+              navigate('/painel/superadmin');
+            } else if (role === 'lojista') {
+              // New users should be lojistas - redirect to dashboard
+              navigate('/painel/restaurante');
+            } else {
+              // If no role found, still redirect to lojista panel (should have role by now)
+              console.warn('No role found, redirecting to lojista panel anyway');
+              navigate('/painel/restaurante');
+            }
+            setJustSignedUp(false);
+          }, 1000);
         }
       }
     } catch (err) {
@@ -157,6 +210,7 @@ export default function Auth() {
         description: "Ocorreu um erro inesperado",
         variant: "destructive"
       });
+      setIsHandlingAuth(false);
     } finally {
       setIsSubmitting(false);
     }

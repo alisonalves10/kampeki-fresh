@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { ShoppingBag, DollarSign, TrendingUp, Clock, Package, Users } from 'lucide-react';
 
@@ -41,9 +42,13 @@ export default function RestaurantDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchStats();
-    fetchRecentOrders();
-  }, []);
+    if (restaurant?.id) {
+      fetchStats();
+      fetchRecentOrders();
+    } else {
+      setLoading(false);
+    }
+  }, [restaurant?.id]);
 
   const fetchStats = async () => {
     try {
@@ -193,6 +198,40 @@ export default function RestaurantDashboard() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // Show onboarding message if no restaurant
+  if (!restaurant) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-serif font-bold text-foreground">Bem-vindo ao Delivery2U!</h1>
+          <p className="text-muted-foreground">
+            Configure seu restaurante para começar a receber pedidos
+          </p>
+        </div>
+
+        <div className="bg-card rounded-xl border border-border p-8 text-center">
+          <div className="max-w-md mx-auto space-y-4">
+            <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+              <Package className="h-8 w-8 text-primary" />
+            </div>
+            <h2 className="text-xl font-semibold text-foreground">
+              Configure seu restaurante
+            </h2>
+            <p className="text-muted-foreground">
+              Você ainda não tem um restaurante vinculado. Acesse as configurações para criar ou vincular seu restaurante.
+            </p>
+            <Button 
+              onClick={() => window.location.href = '/painel/restaurante/configuracoes'}
+              className="mt-4"
+            >
+              Ir para Configurações
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }

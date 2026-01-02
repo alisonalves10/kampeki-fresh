@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Menu, X, Sun, Moon, LogOut } from "lucide-react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Menu, X, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
@@ -19,9 +19,10 @@ type AppRole = "admin" | "lojista" | "user";
 export function LandingHeader() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isDark, setIsDark] = useState(false);
   const [userRole, setUserRole] = useState<AppRole | null>(null);
+  const [pendingHash, setPendingHash] = useState<string | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, signOut } = useAuth();
 
   useEffect(() => {
@@ -30,11 +31,6 @@ export function LandingHeader() {
     };
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  useEffect(() => {
-    const isDarkMode = document.documentElement.classList.contains("dark");
-    setIsDark(isDarkMode);
   }, []);
 
   useEffect(() => {
@@ -52,16 +48,39 @@ export function LandingHeader() {
     }
   }, [user]);
 
-  const toggleTheme = () => {
-    setIsDark(!isDark);
-    document.documentElement.classList.toggle("dark");
-  };
+  // Efeito para fazer scroll quando a página carregar e houver um hash pendente
+  useEffect(() => {
+    if (location.pathname === "/" && pendingHash) {
+      const scrollToElement = () => {
+        const element = document.querySelector(pendingHash);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth" });
+          setPendingHash(null);
+        } else {
+          // Se o elemento ainda não estiver disponível, tenta novamente
+          setTimeout(scrollToElement, 100);
+        }
+      };
+      scrollToElement();
+    }
+  }, [location.pathname, pendingHash]);
 
-  const handleNavClick = (href: string) => {
+  const handleNavClick = (href: string, e?: React.MouseEvent) => {
+    e?.preventDefault();
     setIsMobileMenuOpen(false);
+    
     if (href.startsWith("#")) {
-      const element = document.querySelector(href);
-      element?.scrollIntoView({ behavior: "smooth" });
+      // Se estiver na landing page, apenas faz scroll
+      if (location.pathname === "/") {
+        const element = document.querySelector(href);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth" });
+        }
+      } else {
+        // Se estiver em outra página, navega para a landing page e marca o hash para scroll
+        setPendingHash(href);
+        navigate("/");
+      }
     } else {
       navigate(href);
     }
@@ -120,8 +139,9 @@ export function LandingHeader() {
             {navLinks.map((link) => (
               <button
                 key={link.label}
-                onClick={() => handleNavClick(link.href)}
-                className="text-muted-foreground hover:text-foreground transition-colors font-medium text-sm"
+                onClick={(e) => handleNavClick(link.href, e)}
+                className="text-muted-foreground hover:text-foreground transition-colors font-medium text-sm cursor-pointer"
+                type="button"
               >
                 {link.label}
               </button>
@@ -130,14 +150,6 @@ export function LandingHeader() {
 
           {/* Desktop Actions */}
           <div className="hidden lg:flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleTheme}
-              className="text-muted-foreground"
-            >
-              {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-            </Button>
             {user && (userRole === "admin" || userRole === "lojista") ? (
               <>
                 <Button variant="ghost" asChild>
@@ -165,14 +177,6 @@ export function LandingHeader() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={toggleTheme}
-              className="text-muted-foreground"
-            >
-              {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             >
               {isMobileMenuOpen ? (
@@ -192,8 +196,9 @@ export function LandingHeader() {
             {navLinks.map((link) => (
               <button
                 key={link.label}
-                onClick={() => handleNavClick(link.href)}
-                className="block w-full text-left py-3 px-4 text-foreground hover:bg-muted rounded-lg transition-colors"
+                onClick={(e) => handleNavClick(link.href, e)}
+                className="block w-full text-left py-3 px-4 text-foreground hover:bg-muted rounded-lg transition-colors cursor-pointer"
+                type="button"
               >
                 {link.label}
               </button>

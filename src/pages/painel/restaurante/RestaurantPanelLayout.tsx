@@ -67,30 +67,118 @@ export default function RestaurantPanelLayout() {
   }, [user, authLoading, navigate]);
 
   const checkLojistaRole = async () => {
-    // Check for lojista or admin role
-    const { data: roleData, error: roleError } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user?.id)
-      .in('role', ['admin', 'lojista'])
-      .maybeSingle();
-
-    if (roleError || !roleData) {
+    if (!user?.id) {
       setIsLojista(false);
       return;
     }
 
+    console.log('Checking role for user:', user.id);
+
+    // Wait a bit for trigger to create role (if user just signed up)
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Check for lojista or admin role - try multiple times
+    let roleData = null;
+    let attempts = 0;
+    const maxAttempts = 10;
+
+    while (!roleData && attempts < maxAttempts) {
+      const { data, error: roleError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .in('role', ['admin', 'lojista'])
+        .maybeSingle();
+
+      if (roleError) {
+        console.error('Error checking role (attempt', attempts + 1, '):', roleError);
+      } else if (data) {
+        roleData = data;
+        console.log('User role found:', data.role);
+        break;
+      } else {
+        console.log('Role not found yet (attempt', attempts + 1, ')');
+      }
+
+      attempts++;
+      if (attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      }
+    }
+
+    // If still no role after all attempts, try to create it manually (fallback)
+    if (!roleData) {
+      console.warn('Role not found after', maxAttempts, 'attempts. Trying to create role manually...');
+      
+      // Try to create the role as a fallback
+      const { error: insertError } = await supabase
+        .from('user_roles')
+        .insert({ user_id: user.id, role: 'lojista' })
+        .select()
+        .maybeSingle();
+
+      if (!insertError) {
+        console.log('Role created manually as fallback');
+        roleData = { role: 'lojista' };
+      } else {
+        console.error('Failed to create role manually:', insertError);
+        console.error('User does not have lojista or admin role and could not be created');
+        setIsLojista(false);
+        return;
+      }
+    }
+
     setIsLojista(true);
 
-    // Fetch their restaurant
-    const { data: restaurantData } = await supabase
-      .from('restaurants')
-      .select('id, name, slug, logo_url')
-      .eq('owner_id', user?.id)
+    // Fetch profile to get tenant_id
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('tenant_id')
+      .eq('user_id', user.id)
       .maybeSingle();
 
+    if (profileError) {
+      console.error('Error fetching profile:', profileError);
+      setRestaurant(null);
+      return;
+    }
+
+    if (!profileData) {
+      console.log('Profile not found for user');
+      setRestaurant(null);
+      return;
+    }
+
+    console.log('Profile tenant_id:', profileData.tenant_id);
+
+    // If no tenant_id, user is not linked to a restaurant yet
+    // But they can still access the panel (they'll need to create/link a restaurant)
+    if (!profileData.tenant_id) {
+      console.log('User has no tenant_id - not linked to restaurant yet');
+      setRestaurant(null);
+      // Allow access to panel even without tenant_id - they can create restaurant in settings
+      return;
+    }
+
+    // Fetch restaurant using tenant_id
+    const { data: restaurantData, error: restaurantError } = await supabase
+      .from('restaurants')
+      .select('id, name, slug, logo_url')
+      .eq('id', profileData.tenant_id)
+      .maybeSingle();
+
+    if (restaurantError) {
+      console.error('Error fetching restaurant:', restaurantError);
+      setRestaurant(null);
+      return;
+    }
+
     if (restaurantData) {
+      console.log('Restaurant found:', restaurantData.name);
       setRestaurant(restaurantData);
+    } else {
+      console.log('Restaurant not found for tenant_id:', profileData.tenant_id);
+      setRestaurant(null);
     }
   };
 
@@ -115,8 +203,13 @@ export default function RestaurantPanelLayout() {
           <h1 className="font-serif text-2xl font-semibold text-foreground mb-2">
             Acesso Negado
           </h1>
-          <p className="text-muted-foreground mb-6">
+          <p className="text-muted-foreground mb-2">
             Você não tem permissão para acessar o painel do restaurante.
+          </p>
+          <p className="text-sm text-muted-foreground/70 mb-6">
+            Para acessar este painel, você precisa ter o role "lojista" ou "admin" na tabela user_roles.
+            <br />
+            Verifique o console do navegador (F12) para mais detalhes.
           </p>
           <Button onClick={() => navigate('/')}>
             <ChevronLeft className="h-4 w-4 mr-2" />
@@ -126,6 +219,9 @@ export default function RestaurantPanelLayout() {
       </div>
     );
   }
+
+  // Allow access even without restaurant - user can create one in settings
+  // The dashboard and other pages will handle the case when restaurant is null
 
   return (
     <div className="min-h-screen bg-background flex">

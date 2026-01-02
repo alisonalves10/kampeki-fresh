@@ -8,6 +8,7 @@ interface Profile {
   name: string | null;
   phone: string | null;
   points: number;
+  tenant_id: string | null;
 }
 
 interface AuthContextType {

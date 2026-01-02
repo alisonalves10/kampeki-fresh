@@ -32,22 +32,9 @@ interface Restaurant {
   slug: string;
 }
 
-const defaultBranding: Omit<TenantBranding, 'restaurant_id'> = {
-  primary_color: '#FBBF24',
-  secondary_color: '#F97316',
-  background_color: '#0a0a0a',
-  text_color: '#fafafa',
-  header_image_url: null,
-  header_title: null,
-  header_subtitle: null,
-  logo_url: null,
-  favicon_url: null,
-  subdomain: null,
-  subdomain_enabled: false,
-};
-
 export default function RestaurantBranding() {
-  const { restaurant } = useOutletContext<{ restaurant: Restaurant | null }>();
+  const { restaurant: contextRestaurant } = useOutletContext<{ restaurant: Restaurant | null }>();
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(contextRestaurant);
   const [branding, setBranding] = useState<TenantBranding | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -55,10 +42,30 @@ export default function RestaurantBranding() {
   const { toast } = useToast();
 
   useEffect(() => {
+    if (contextRestaurant) {
+      setRestaurant(contextRestaurant);
+    }
+  }, [contextRestaurant]);
+
+  useEffect(() => {
     if (restaurant?.id) {
       fetchBranding();
     }
   }, [restaurant?.id]);
+
+  const defaultBranding: Omit<TenantBranding, 'restaurant_id'> = {
+    primary_color: '#FBBF24',
+    secondary_color: '#F97316',
+    background_color: '#0a0a0a',
+    text_color: '#fafafa',
+    header_image_url: null,
+    header_title: null,
+    header_subtitle: null,
+    logo_url: null,
+    favicon_url: null,
+    subdomain: null,
+    subdomain_enabled: false,
+  };
 
   const fetchBranding = async () => {
     if (!restaurant?.id) return;
@@ -371,56 +378,84 @@ export default function RestaurantBranding() {
           </CardContent>
         </Card>
 
-        {/* Subdomínio */}
+        {/* Slug do Restaurante */}
         <Card>
           <CardHeader>
-            <CardTitle>Subdomínio</CardTitle>
-            <CardDescription>Configure seu endereço personalizado</CardDescription>
+            <CardTitle>Slug do Restaurante</CardTitle>
+            <CardDescription>Configure o endereço do seu cardápio</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="subdomain">Subdomínio</Label>
+              <Label htmlFor="slug">Slug</Label>
               <div className="flex items-center gap-2">
                 <Input
-                  id="subdomain"
-                  value={branding?.subdomain || ''}
-                  onChange={(e) => handleSubdomainChange(e.target.value)}
-                  placeholder="seurestaurante"
-                  className={subdomainError ? 'border-destructive' : ''}
+                  id="slug"
+                  value={restaurant?.slug || ''}
+                  onChange={(e) => {
+                    const newSlug = e.target.value.toLowerCase().trim().replace(/[^a-z0-9-]/g, '');
+                    if (restaurant) {
+                      setRestaurant({ ...restaurant, slug: newSlug });
+                    }
+                  }}
+                  onBlur={async () => {
+                    if (!restaurant?.id || !restaurant.slug) return;
+                    
+                    // Validar slug
+                    const reservedWords = ['login', 'painel', 'admin', 'restaurantes', 'auth', 'r'];
+                    if (reservedWords.includes(restaurant.slug)) {
+                      toast({
+                        title: 'Erro',
+                        description: 'Este slug é uma palavra reservada',
+                        variant: 'destructive',
+                      });
+                      return;
+                    }
+                    
+                    // Verificar se slug já existe
+                    const { data: existing } = await supabase
+                      .from('restaurants')
+                      .select('id')
+                      .eq('slug', restaurant.slug)
+                      .neq('id', restaurant.id)
+                      .maybeSingle();
+                    
+                    if (existing) {
+                      toast({
+                        title: 'Erro',
+                        description: 'Este slug já está em uso',
+                        variant: 'destructive',
+                      });
+                      return;
+                    }
+                    
+                    // Atualizar slug
+                    const { error } = await supabase
+                      .from('restaurants')
+                      .update({ slug: restaurant.slug })
+                      .eq('id', restaurant.id);
+                    
+                    if (error) {
+                      toast({
+                        title: 'Erro',
+                        description: 'Não foi possível atualizar o slug',
+                        variant: 'destructive',
+                      });
+                    } else {
+                      toast({ title: 'Slug atualizado com sucesso!' });
+                    }
+                  }}
+                  placeholder="cocobambu"
+                  pattern="[a-z0-9-]+"
                 />
-                <span className="text-muted-foreground whitespace-nowrap">.delivery2u.com.br</span>
               </div>
-              {subdomainError && (
-                <p className="text-sm text-destructive">{subdomainError}</p>
-              )}
+              <p className="text-xs text-muted-foreground">
+                Use apenas letras minúsculas, números e hífen. Não use palavras reservadas (login, painel, admin, restaurantes).
+              </p>
             </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="subdomain_enabled">Ativar Subdomínio</Label>
-                <p className="text-sm text-muted-foreground">
-                  Permite acessar seu menu via subdomínio personalizado
-                </p>
-              </div>
-              <Switch
-                id="subdomain_enabled"
-                checked={branding?.subdomain_enabled || false}
-                onCheckedChange={(checked) => setBranding(prev => prev ? { ...prev, subdomain_enabled: checked } : null)}
-                disabled={!branding?.subdomain}
-              />
-            </div>
-            {branding?.subdomain && branding?.subdomain_enabled && (
-              <Alert>
-                <ExternalLink className="h-4 w-4" />
-                <AlertDescription>
-                  Seu menu estará disponível em:{' '}
-                  <strong>{branding.subdomain}.delivery2u.com.br</strong>
-                </AlertDescription>
-              </Alert>
-            )}
             <Alert>
-              <AlertCircle className="h-4 w-4" />
+              <ExternalLink className="h-4 w-4" />
               <AlertDescription>
-                Enquanto o subdomínio não estiver configurado, seu menu continuará disponível em{' '}
+                Seu menu está disponível em:{' '}
                 <strong>delivery2u.com.br/r/{restaurant.slug}</strong>
               </AlertDescription>
             </Alert>
