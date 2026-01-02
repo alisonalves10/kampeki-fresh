@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { ShoppingBag, Clock, CheckCircle, XCircle, Truck, RefreshCw } from 'lucide-react';
+import { ShoppingBag, Clock, CheckCircle, XCircle, Truck, RefreshCw, Package } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, type OrderStatus } from '@/lib/constants';
 
 interface Order {
   id: string;
@@ -50,15 +51,21 @@ interface OrderItem {
   quantity: number;
 }
 
-const statusOptions = [
-  { value: 'pending', label: 'Pendente', icon: Clock, color: 'text-amber-500' },
-  { value: 'confirmed', label: 'Confirmado', icon: CheckCircle, color: 'text-blue-500' },
-  { value: 'preparing', label: 'Preparando', icon: ShoppingBag, color: 'text-purple-500' },
-  { value: 'ready', label: 'Pronto', icon: CheckCircle, color: 'text-green-500' },
-  { value: 'out_for_delivery', label: 'Saiu p/ Entrega', icon: Truck, color: 'text-indigo-500' },
-  { value: 'delivered', label: 'Entregue', icon: CheckCircle, color: 'text-green-600' },
-  { value: 'cancelled', label: 'Cancelado', icon: XCircle, color: 'text-red-500' },
-];
+const statusIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+  pending: Clock,
+  accepted: CheckCircle,
+  preparing: Package,
+  sent: Truck,
+  delivered: CheckCircle,
+  cancelled: XCircle,
+};
+
+const statusOptions = Object.entries(ORDER_STATUS_LABELS).map(([value, label]) => ({
+  value,
+  label,
+  icon: statusIcons[value] || Clock,
+  colorClass: ORDER_STATUS_COLORS[value as OrderStatus] || 'bg-muted text-muted-foreground',
+}));
 
 export default function RestaurantOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -151,9 +158,10 @@ export default function RestaurantOrders() {
     const option = statusOptions.find(o => o.value === status);
     if (!option) return <Badge variant="secondary">{status}</Badge>;
 
+    const Icon = option.icon;
     return (
-      <Badge variant={status === 'cancelled' ? 'destructive' : 'default'} className="gap-1">
-        <option.icon className="h-3 w-3" />
+      <Badge className={`gap-1 ${option.colorClass}`}>
+        <Icon className="h-3 w-3" />
         {option.label}
       </Badge>
     );
@@ -168,7 +176,7 @@ export default function RestaurantOrders() {
     });
   };
 
-  const activeStatuses = ['pending', 'confirmed', 'preparing', 'ready', 'out_for_delivery'];
+  const activeStatuses = ['pending', 'accepted', 'preparing', 'sent'];
   const activeOrders = orders.filter(o => activeStatuses.includes(o.status));
   const completedOrders = orders.filter(o => !activeStatuses.includes(o.status));
 
@@ -339,14 +347,17 @@ export default function RestaurantOrders() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {statusOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        <div className="flex items-center gap-2">
-                          <option.icon className={`h-4 w-4 ${option.color}`} />
-                          {option.label}
-                        </div>
-                      </SelectItem>
-                    ))}
+                    {statusOptions.map((option) => {
+                      const Icon = option.icon;
+                      return (
+                        <SelectItem key={option.value} value={option.value}>
+                          <div className="flex items-center gap-2">
+                            <Icon className="h-4 w-4" />
+                            {option.label}
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>

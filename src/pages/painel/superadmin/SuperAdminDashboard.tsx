@@ -1,7 +1,18 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
-import { Store, Users, ShoppingBag, TrendingUp, AlertCircle } from 'lucide-react';
+import { Store, Users, ShoppingBag, TrendingUp, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface DashboardStats {
   totalRestaurants: number;
@@ -10,6 +21,15 @@ interface DashboardStats {
   totalOrders: number;
   totalRevenue: number;
   pendingRestaurants: number;
+}
+
+interface Restaurant {
+  id: string;
+  name: string;
+  slug: string;
+  is_active: boolean;
+  created_at: string;
+  city: string | null;
 }
 
 export default function SuperAdminDashboard() {
@@ -21,22 +41,27 @@ export default function SuperAdminDashboard() {
     totalRevenue: 0,
     pendingRestaurants: 0,
   });
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchStats();
+    fetchData();
   }, []);
 
-  const fetchStats = async () => {
+  const fetchData = async () => {
     try {
-      // Fetch restaurants stats
-      const { data: restaurants } = await supabase
+      // Fetch restaurants
+      const { data: restaurantsData } = await supabase
         .from('restaurants')
-        .select('id, is_active');
+        .select('id, name, slug, is_active, created_at, city')
+        .order('created_at', { ascending: false });
       
-      const totalRestaurants = restaurants?.length || 0;
-      const activeRestaurants = restaurants?.filter(r => r.is_active).length || 0;
-      const pendingRestaurants = restaurants?.filter(r => !r.is_active).length || 0;
+      const restaurantsList = restaurantsData || [];
+      setRestaurants(restaurantsList);
+
+      const totalRestaurants = restaurantsList.length;
+      const activeRestaurants = restaurantsList.filter(r => r.is_active).length;
+      const pendingRestaurants = restaurantsList.filter(r => !r.is_active).length;
 
       // Fetch users count
       const { data: profiles } = await supabase
@@ -64,6 +89,31 @@ export default function SuperAdminDashboard() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleRestaurantStatus = async (id: string, currentStatus: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('restaurants')
+        .update({ is_active: !currentStatus })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setRestaurants(prev =>
+        prev.map(r => r.id === id ? { ...r, is_active: !currentStatus } : r)
+      );
+
+      toast.success(currentStatus ? 'Restaurante desativado' : 'Restaurante ativado');
+      fetchData();
+    } catch (error) {
+      console.error('Error updating restaurant:', error);
+      toast.error('Erro ao atualizar restaurante');
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('pt-BR');
   };
 
   const statCards = [
@@ -128,7 +178,7 @@ export default function SuperAdminDashboard() {
                 {stats.pendingRestaurants} restaurante{stats.pendingRestaurants > 1 ? 's' : ''} pendente{stats.pendingRestaurants > 1 ? 's' : ''} de aprovação
               </p>
               <p className="text-sm text-muted-foreground">
-                Acesse a aba Restaurantes para revisar e aprovar
+                Revise a lista abaixo para ativar
               </p>
             </div>
           </CardContent>
@@ -158,16 +208,68 @@ export default function SuperAdminDashboard() {
         })}
       </div>
 
-      {/* Recent Activity */}
+      {/* Restaurants Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Atividade Recente</CardTitle>
-          <CardDescription>Últimas ações registradas na plataforma</CardDescription>
+          <CardTitle>Restaurantes</CardTitle>
+          <CardDescription>Lista de todos os restaurantes cadastrados</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground text-sm">
-            Confira a aba de Auditoria para ver todas as atividades.
-          </p>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nome</TableHead>
+                <TableHead>Subdomínio</TableHead>
+                <TableHead>Cidade</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Criado em</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {restaurants.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8">
+                    <Store className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-muted-foreground">Nenhum restaurante cadastrado</p>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                restaurants.map((restaurant) => (
+                  <TableRow key={restaurant.id}>
+                    <TableCell className="font-medium">{restaurant.name}</TableCell>
+                    <TableCell className="font-mono text-sm">{restaurant.slug}</TableCell>
+                    <TableCell>{restaurant.city || '-'}</TableCell>
+                    <TableCell>
+                      <Badge variant={restaurant.is_active ? 'default' : 'secondary'}>
+                        {restaurant.is_active ? 'Ativo' : 'Inativo'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{formatDate(restaurant.created_at)}</TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant={restaurant.is_active ? 'outline' : 'default'}
+                        size="sm"
+                        onClick={() => toggleRestaurantStatus(restaurant.id, restaurant.is_active)}
+                      >
+                        {restaurant.is_active ? (
+                          <>
+                            <XCircle className="h-4 w-4 mr-1" />
+                            Desativar
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Ativar
+                          </>
+                        )}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
     </div>
